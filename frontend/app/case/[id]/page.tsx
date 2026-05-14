@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   ArrowLeft, ShieldCheck, Upload, FileCheck, Brain, 
   Mail, ClipboardList, Trash2, AlertCircle, CheckCircle2,
-  Clock, Download, UserCheck, Shield, ScanText
+  Clock, Download, UserCheck, Shield, ScanText, FileJson
 } from "lucide-react";
 import { API_BASE_URL, Case, Document, Extraction, Task, Consent, Report, OCRResult, getAuthHeaders, handleApiResponse } from "@/lib/api";
 
@@ -27,6 +27,7 @@ export default function CaseDetail() {
   const [uploading, setUploading] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [ocrProcessing, setOcrProcessing] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,42 +40,34 @@ export default function CaseDetail() {
       setLoading(true);
       setError(null);
 
-      // 1. Fetch Profile
       const profileRes = await fetch(`${API_BASE_URL}/auth/me`, { headers: getAuthHeaders() });
       const profile = await handleApiResponse(profileRes);
       setUserProfile(profile);
 
-      // 2. Fetch Case
       const caseRes = await fetch(`${API_BASE_URL}/cases/${id}`, { headers: getAuthHeaders() });
       const caseData = await handleApiResponse(caseRes);
       setCaseData(caseData);
 
-      // 3. Fetch Documents
       const docsRes = await fetch(`${API_BASE_URL}/documents/case/${id}`, { headers: getAuthHeaders() });
       const docs = await handleApiResponse(docsRes);
       setDocuments(docs);
 
-      // 4. Fetch Consents
       const consentRes = await fetch(`${API_BASE_URL}/privacy/cases/${id}/consents`, { headers: getAuthHeaders() });
       setConsents(await handleApiResponse(consentRes));
 
-      // 5. Fetch Reports
       const reportsRes = await fetch(`${API_BASE_URL}/reports/cases/${id}`, { headers: getAuthHeaders() });
       setReports(await handleApiResponse(reportsRes));
 
-      // 6. Fetch OCR and Extractions for each document
       const extMap: Record<string, Extraction> = {};
       const ocrMap: Record<string, OCRResult> = {};
       
       for (const doc of docs) {
-        // Fetch OCR
         const ocrRes = await fetch(`${API_BASE_URL}/ocr/documents/${doc.id}`, { headers: getAuthHeaders() });
         if (ocrRes.ok) {
           const ocrData = await ocrRes.json();
           if (ocrData) ocrMap[doc.id] = ocrData;
         }
 
-        // Fetch AI Extraction
         const extRes = await fetch(`${API_BASE_URL}/ai/documents/${doc.id}/extraction`, { headers: getAuthHeaders() });
         if (extRes.ok) {
           extMap[doc.id] = await extRes.json();
@@ -171,10 +164,11 @@ export default function CaseDetail() {
     }
   };
 
-  const runMockExtract = async (docId: string) => {
-    if (!canModify) return;
+  const extractFromOCR = async (docId: string) => {
+    if (!canReview) return;
+    setExtracting(docId);
     try {
-      const res = await fetch(`${API_BASE_URL}/ai/documents/${docId}/mock-extract`, { 
+      const res = await fetch(`${API_BASE_URL}/ai/documents/${docId}/extract-from-reviewed-ocr`, { 
         method: "POST",
         headers: getAuthHeaders()
       });
@@ -182,6 +176,8 @@ export default function CaseDetail() {
       fetchData();
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setExtracting(null);
     }
   };
 
@@ -322,7 +318,6 @@ export default function CaseDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           
-          {/* Section Documents */}
           <section className="bg-white border rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
@@ -371,48 +366,44 @@ export default function CaseDetail() {
                           className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors flex items-center gap-1"
                         >
                           <ScanText size={14} />
-                          {ocrProcessing === doc.id ? "OCR en cours..." : "Lancer OCR local"}
+                          {ocrProcessing === doc.id ? "OCR..." : "OCR local"}
                         </button>
                       )}
-                      {canModify && ocrResults[doc.id]?.is_reviewed && !extractions[doc.id] && (
+                      {canReview && ocrResults[doc.id]?.is_reviewed && !extractions[doc.id] && (
                          <button 
-                          onClick={() => runMockExtract(doc.id)}
-                          className="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                          onClick={() => extractFromOCR(doc.id)}
+                          disabled={extracting === doc.id}
+                          className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1"
                         >
-                          <Brain size={14} />
-                          Analyse AI (Mock)
+                          <FileJson size={14} />
+                          {extracting === doc.id ? "Analyse..." : "Extraire du texte"}
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* OCR Results Panel */}
                   {ocrResults[doc.id] && (
                     <div className="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                           <ScanText size={12} className="text-blue-500" />
-                          Texte extrait localement
+                          Texte OCR local
                         </span>
                         {canReview && !ocrResults[doc.id].is_reviewed && (
                           <button 
                             onClick={() => reviewOCR(ocrResults[doc.id].id)}
-                            className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
                           >
-                            <UserCheck size={14} />
-                            Valider le texte OCR
+                            Valider le texte
                           </button>
                         )}
                         {ocrResults[doc.id].is_reviewed && (
                            <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-bold uppercase">Texte Validé</span>
                         )}
                       </div>
-                      <div className="max-h-40 overflow-y-auto text-[11px] bg-white p-3 rounded-lg border text-slate-600 leading-relaxed whitespace-pre-wrap">
+                      <div className="max-h-32 overflow-y-auto text-[11px] bg-white p-3 rounded-lg border text-slate-600 leading-relaxed whitespace-pre-wrap italic">
                         {ocrResults[doc.id].extracted_text}
                       </div>
-                      <p className="mt-2 text-[10px] text-slate-400 italic">
-                        Avertissement: OCR local — le texte peut contenir des erreurs. Vérification humaine obligatoire.
-                      </p>
                     </div>
                   )}
 
@@ -421,7 +412,7 @@ export default function CaseDetail() {
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1">
                           <CheckCircle2 size={12} className="text-indigo-500" />
-                          Analyse AI effectuée
+                          Extraction structurée
                         </span>
                         {canReview && !extractions[doc.id].is_verified && (
                           <button 
@@ -429,26 +420,26 @@ export default function CaseDetail() {
                             className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
                           >
                             <UserCheck size={14} />
-                            Approuver la revue
+                            Approuver l'analyse
                           </button>
                         )}
                       </div>
-                      <pre className="text-[11px] bg-white p-3 rounded-lg border overflow-x-auto text-slate-600 leading-relaxed">
-                        {JSON.stringify(extractions[doc.id].raw_json, null, 2)}
-                      </pre>
+                      <div className="text-[11px] bg-white p-4 rounded-lg border text-slate-600 space-y-2">
+                         <p><b>Type:</b> {JSON.parse(extractions[doc.id].raw_json).document_type}</p>
+                         <p><b>Institution:</b> {JSON.parse(extractions[doc.id].raw_json).institution}</p>
+                         <p><b>Dates:</b> {JSON.parse(extractions[doc.id].raw_json).important_dates?.join(', ')}</p>
+                         <p className="text-indigo-600"><b>Synthèse:</b> {JSON.parse(extractions[doc.id].raw_json).summary_fr}</p>
+                         <div className="pt-2 border-t text-[10px] text-slate-400 italic">
+                           Confiance: {JSON.parse(extractions[doc.id].raw_json).confidence_score * 100}% | {JSON.parse(extractions[doc.id].raw_json).disclaimer}
+                         </div>
+                      </div>
                     </div>
                   )}
                 </div>
               ))}
-              {documents.length === 0 && (
-                <div className="text-center py-10 text-slate-400 text-sm italic">
-                  Aucun document pour cet usager.
-                </div>
-              )}
             </div>
           </section>
 
-          {/* Section Copilot */}
           <section className="bg-white border rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
@@ -457,79 +448,46 @@ export default function CaseDetail() {
               </h2>
               {canModify && (
                 <div className="flex gap-2">
-                  <button 
-                    onClick={generateSummary}
-                    className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2"
-                  >
-                    <Mail size={16} />
-                    Synthèse
+                  <button onClick={generateSummary} className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2">
+                    <Mail size={16} /> Synthèse
                   </button>
-                  <button 
-                    onClick={generateTasks}
-                    className="bg-teal-50 text-teal-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-100 transition-colors flex items-center gap-2"
-                  >
-                    <ClipboardList size={16} />
-                    Tâches
+                  <button onClick={generateTasks} className="bg-teal-50 text-teal-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-100 transition-colors flex items-center gap-2">
+                    <ClipboardList size={16} /> Tâches
                   </button>
                 </div>
               )}
             </div>
-
             {caseData?.summary && (
               <div className="bg-indigo-50/30 border border-indigo-100 rounded-xl p-6 mb-6">
-                <h4 className="text-sm font-bold text-indigo-900 mb-3 uppercase tracking-widest flex items-center gap-2">
-                  Synthèse opérationnelle
-                </h4>
-                <div className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">
-                  {caseData.summary}
-                </div>
-              </div>
-            )}
-
-            {!caseData?.summary && (
-              <div className="text-center py-10 text-slate-400 text-sm italic">
-                {canModify ? "Générez une synthèse pour faciliter le suivi." : "Aucune synthèse disponible."}
+                <h4 className="text-sm font-bold text-indigo-900 mb-3 uppercase tracking-widest">Synthèse opérationnelle</h4>
+                <div className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">{caseData.summary}</div>
               </div>
             )}
           </section>
 
-          {/* Section Rapports */}
           <section className="bg-white border rounded-2xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <FileCheck className="text-emerald-600" />
-                Sorties PDF
+                <FileCheck className="text-emerald-600" /> Sorties PDF
               </h2>
               {canReport && (
-                <button 
-                  onClick={generatePDFReport}
-                  disabled={generatingReport}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-emerald-100"
-                >
-                  <Download size={16} />
-                  {generatingReport ? "Génération..." : "Générer rapport"}
+                <button onClick={generatePDFReport} disabled={generatingReport} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2">
+                  <Download size={16} /> {generatingReport ? "Génération..." : "Générer rapport"}
                 </button>
               )}
             </div>
-
             <div className="space-y-3">
               {reports.map(report => (
                 <div key={report.id} className="flex items-center justify-between p-4 bg-slate-50 border rounded-xl">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white border rounded-lg flex items-center justify-center text-emerald-600">
-                      <span>📄</span>
-                    </div>
+                    <div className="w-10 h-10 bg-white border rounded-lg flex items-center justify-center text-emerald-600"><span>📄</span></div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">Rapport de synthèse</p>
                       <p className="text-[11px] text-slate-500">Créé le {new Date(report.created_at).toLocaleString('fr-FR')}</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => downloadReport(report.id)}
-                    className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"
-                  >
-                    <Download size={14} />
-                    Télécharger
+                  <button onClick={() => downloadReport(report.id)} className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2">
+                    <Download size={14} /> Télécharger
                   </button>
                 </div>
               ))}
@@ -538,31 +496,18 @@ export default function CaseDetail() {
         </div>
 
         <div className="space-y-6">
-          {/* Section Privacy/Consent */}
           <div className={`rounded-3xl p-6 border ${hasConsent ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100"}`}>
             <div className="flex items-center gap-2 mb-4">
               <ShieldCheck className={hasConsent ? "text-emerald-600" : "text-amber-600"} size={24} />
               <h3 className="font-bold text-slate-900">Confidentialité</h3>
             </div>
-            
             {hasConsent ? (
-              <div>
-                <p className="text-sm text-emerald-800 mb-4 font-medium">
-                  Accord RGPD actif pour cet usager. L'OCR local et les outils AI sont opérationnels.
-                </p>
-              </div>
+              <p className="text-sm text-emerald-800 font-medium">Accord RGPD actif. L'OCR local et l'extraction déterministe sont opérationnels.</p>
             ) : (
               <div>
-                <p className="text-sm text-amber-800 mb-6">
-                  L'accord explicite de l'usager est requis avant toute extraction ou OCR local.
-                </p>
+                <p className="text-sm text-amber-800 mb-6">L'accord explicite de l'usager est requis avant tout traitement.</p>
                 {canModify && (
-                  <button 
-                    onClick={grantConsent}
-                    className="w-full bg-amber-600 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors"
-                  >
-                    Recueillir le consentement
-                  </button>
+                  <button onClick={grantConsent} className="w-full bg-amber-600 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-amber-700">Recueillir le consentement</button>
                 )}
               </div>
             )}
@@ -574,9 +519,6 @@ export default function CaseDetail() {
                 <h3 className="font-bold text-slate-900 text-xs uppercase tracking-widest">Rôle Actuel</h3>
              </div>
              <p className="text-sm text-slate-600 font-medium capitalize">{role}</p>
-             <p className="text-[10px] text-slate-400 mt-2 leading-relaxed italic">
-               Vos permissions sont limitées par le protocole de sécurité de votre association.
-             </p>
           </div>
         </div>
       </div>

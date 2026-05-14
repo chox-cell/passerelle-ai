@@ -5,9 +5,10 @@ import uuid
 import json
 from datetime import datetime
 from ..database import get_session
-from ..models import Document, ExtractionResult, Case, AuditLog, Profile
+from ..models import Document, ExtractionResult, Case, AuditLog, Profile, OCRResult
 from .auth import get_current_user, RoleChecker
 from .privacy import verify_consent
+from ..services.local_extractor import extract_structured_data_from_text
 
 from pydantic import BaseModel
 
@@ -175,4 +176,66 @@ async def review_extraction(
     session.commit()
     session.refresh(extraction)
     
+    return format_extraction(extraction)
+
+@router.post("/documents/{document_id}/extract-from-reviewed-ocr")
+async def extract_from_ocr(
+    document_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_review)
+):
+    # 1. Validate doc and workspace
+    doc = session.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document non trouvé")
+    
+    case = session.get(Case, doc.case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Accès refusé")
+
+    # 2. Verify Consent
+    verify_consent(doc.case_id, "ai_extraction", session)
+
+    # 3. Get Reviewed OCR
+    ocr_statement = select(OCRResult).where(
+        OCRResult.document_id == document_id,
+        OCRResult.is_reviewed == True
+    ).order_by(OCRResult.created_at.desc())
+    ocr_result = session.exec(ocr_statement).first()
+
+    if not ocr_result:
+        raise HTTPException(
+            status_code=400, 
+            detail="Le texte OCR doit être validé par un humain avant l'extraction structurée."
+        )
+
+    # 4. Extract
+    text_to_parse = ocr_result.corrected_text or ocr_result.extracted_text
+    structured_data = extract_structured_data_from_text(text_to_parse)
+
+    # 5. Save ExtractionResult
+    extraction = ExtractionResult(
+        document_id=document_id,
+        raw_json=json.dumps(structured_data),
+        confidence_score=structured_data["confidence_score"],
+        is_verified=False
+    )
+    session.add(extraction)
+
+    # 6. Audit & Status
+    audit = AuditLog(
+        workspace_id=case.workspace_id,
+        user_id=current_user.id,
+        action="OCR_STRUCTURED_EXTRACTION_GENERATED",
+        resource_type="extraction",
+        resource_id=extraction.id
+    )
+    session.add(audit)
+    
+    doc.status = "human_review_required"
+    session.add(doc)
+    
+    session.commit()
+    session.refresh(extraction)
+
     return format_extraction(extraction)

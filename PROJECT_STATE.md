@@ -1,17 +1,15 @@
 # Passerelle AI — Project State
 
 ## Current Status
-**V1.4 OCR Offline (Phase 1 VÉRIFIÉ & STABLE)**. L'extraction de texte locale via Tesseract est opérationnelle, sécurisée par RBAC et isolée par Workspace.
+**V1.4 OCR Offline (Phase 2A Implémentée)**. L'extraction structurée déterministe à partir du texte OCR validé est opérationnelle.
 
-## Finished (V1.4 - Phase 1)
-- ✅ **Moteur OCR** : Intégration de Tesseract (Local-first).
-- ✅ **Sécurité OCR** : Vérification du consentement et isolation par Workspace.
-- ✅ **RBAC OCR** : Rôles Admin/Volunteer pour l'extraction, Admin/Reviewer pour la validation.
-- ✅ **Hardening Frontend** : Interface de revue humaine et protection des boutons par rôle.
-- ✅ **Stabilité** : Rapport de vérification V1.4 Phase 1 complété.
+## Finished (V1.4 - Phase 2A)
+- ✅ **Moteur d'Extraction Local** : Détection par mots-clés et Regex (Local-first).
+- ✅ **Pipeline OCR-to-Extraction** : Liaison sécurisée entre le texte validé et les données structurées.
+- ✅ **Interface de Revue** : Visualisation et validation des champs (Type, Institution, Dates).
 
-## Next Phase (V1.4 - Phase 2)
-- **AI Extraction** : Connecter le texte OCR validé au moteur d'extraction structurée (Remplacement des mocks).
+## Next Phase (V1.4 - Phase 2B)
+- **Règles Avancées** : Amélioration de la détection des délais légaux par type de document.
 
 ## Roadmap Highlights
 1. **V1.3** - Auth & Workspaces (VÉRIFIÉ)
