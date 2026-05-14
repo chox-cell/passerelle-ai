@@ -75,6 +75,12 @@ cd frontend && npm run dev
 ```
 *Accès : http://localhost:3000*
 
+## 🤝 Pilot avec une association
+Nous lançons une phase pilote de 2 semaines avec des associations partenaires pour valider l'outil en conditions réelles.
+- **Kit de Pilotage** : [Consulter le plan de test](./docs/pilot-plan-fr.md)
+- **Formulaire de Feedback** : [Partager vos retours](./FEEDBACK_FORM_FR.md)
+- **Roadmap** : [Voir les prochaines étapes](./docs/v1-2-roadmap.md)
+
 ## 📚 Documentation
 - [Release Notes V1](./RELEASE_NOTES_V1.md)
 - [Script de Démo Français](./DEMO_SCRIPT_FR.md)
