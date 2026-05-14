@@ -8,6 +8,7 @@ from .models import (
     AuditLog,
     Consent,
     Report,
+    OCRResult,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "AuditLog",
     "Consent",
     "Report",
+    "OCRResult",
 ]

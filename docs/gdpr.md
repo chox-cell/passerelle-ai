@@ -7,7 +7,10 @@
 ## Transparency & Consent
 - Explicit consent must be collected before creating a case or uploading documents.
 - **Consent Tracking**: We track `ai_extraction` and `general` consent in the database.
-- **Enforcement**: AI and Copilot features are blocked until consent is verified.
+- **Enforcement**:
+  - [x] L'analyse automatique (OCR et IA) n'est lancée qu'après signature du consentement.
+  - [x] Le texte extrait par OCR est accessible et corrigeable par l'usager/bénévole (Droit de rectification).
+  - AI and Copilot features are blocked until consent is verified.
 - Users are notified that their data is stored locally on the NGO's infrastructure.
 
 ## Individual Rights

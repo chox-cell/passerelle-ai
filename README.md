@@ -3,7 +3,7 @@
 Infrastructure opérationnelle pour les ONG aidant les migrants en France. 
 **Local-first, Privacy-first, French-first.**
 
-![Status](https://img.shields.io/badge/Status-V1.3--Auth--Ready-emerald?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-V1.4--OCR--Local-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)
 
 ## 🎯 Qui est ce pour ?

@@ -2,11 +2,12 @@ import uuid
 import json
 from datetime import datetime
 from sqlmodel import Session, create_all, SQLModel
-from backend.database import engine
-from backend.models.models import Workspace, Case, Consent, Document, ExtractionResult, Task, Profile
+from backend.database import engine, init_db
+from backend.models.models import Workspace, Case, Consent, Document, ExtractionResult, Task, Profile, OCRResult
 
 def seed_demo():
     print("🌱 Seeding demo data...")
+    init_db() # Ensure tables exist
     with Session(engine) as session:
         # 1. Create Workspace
         workspace = Workspace(name="ONG Demo France")

@@ -6,9 +6,9 @@ import Link from "next/link";
 import { 
   ArrowLeft, ShieldCheck, Upload, FileCheck, Brain, 
   Mail, ClipboardList, Trash2, AlertCircle, CheckCircle2,
-  Clock, Download, UserCheck, Shield
+  Clock, Download, UserCheck, Shield, ScanText
 } from "lucide-react";
-import { API_BASE_URL, Case, Document, Extraction, Task, Consent, Report, getAuthHeaders, handleApiResponse } from "@/lib/api";
+import { API_BASE_URL, Case, Document, Extraction, Task, Consent, Report, OCRResult, getAuthHeaders, handleApiResponse } from "@/lib/api";
 
 export default function CaseDetail() {
   const { id } = useParams();
@@ -18,6 +18,7 @@ export default function CaseDetail() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [consents, setConsents] = useState<Consent[]>([]);
   const [extractions, setExtractions] = useState<Record<string, Extraction>>({});
+  const [ocrResults, setOcrResults] = useState<Record<string, OCRResult>>({});
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -25,6 +26,7 @@ export default function CaseDetail() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [ocrProcessing, setOcrProcessing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,14 +62,25 @@ export default function CaseDetail() {
       const reportsRes = await fetch(`${API_BASE_URL}/reports/cases/${id}`, { headers: getAuthHeaders() });
       setReports(await handleApiResponse(reportsRes));
 
-      // 6. Fetch Extractions for each document
+      // 6. Fetch OCR and Extractions for each document
       const extMap: Record<string, Extraction> = {};
+      const ocrMap: Record<string, OCRResult> = {};
+      
       for (const doc of docs) {
+        // Fetch OCR
+        const ocrRes = await fetch(`${API_BASE_URL}/ocr/documents/${doc.id}`, { headers: getAuthHeaders() });
+        if (ocrRes.ok) {
+          const ocrData = await ocrRes.json();
+          if (ocrData) ocrMap[doc.id] = ocrData;
+        }
+
+        // Fetch AI Extraction
         const extRes = await fetch(`${API_BASE_URL}/ai/documents/${doc.id}/extraction`, { headers: getAuthHeaders() });
         if (extRes.ok) {
           extMap[doc.id] = await extRes.json();
         }
       }
+      setOcrResults(ocrMap);
       setExtractions(extMap);
 
     } catch (err: any) {
@@ -109,7 +122,7 @@ export default function CaseDetail() {
     formData.append("file", file);
 
     const headers = getAuthHeaders();
-    delete (headers as any)["Content-Type"]; // Let browser set boundary
+    delete (headers as any)["Content-Type"];
 
     try {
       const res = await fetch(`${API_BASE_URL}/documents/upload/${id}`, {
@@ -123,6 +136,38 @@ export default function CaseDetail() {
       alert(err.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const runOCR = async (docId: string) => {
+    if (!canModify) return;
+    setOcrProcessing(docId);
+    try {
+      const res = await fetch(`${API_BASE_URL}/ocr/documents/${docId}/extract`, { 
+        method: "POST",
+        headers: getAuthHeaders()
+      });
+      await handleApiResponse(res);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setOcrProcessing(null);
+    }
+  };
+
+  const reviewOCR = async (ocrId: string) => {
+    if (!canReview) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/ocr/${ocrId}/review`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ is_reviewed: true })
+      });
+      await handleApiResponse(res);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -202,7 +247,6 @@ export default function CaseDetail() {
 
   const downloadReport = (reportId: string) => {
     window.open(`${API_BASE_URL}/reports/${reportId}/download?token=${localStorage.getItem("token")}`, '_blank');
-    // Note: In a real app, use a temporary download link or a dedicated token param
   };
 
   const deleteCase = async () => {
@@ -320,23 +364,63 @@ export default function CaseDetail() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {canModify && !extractions[doc.id] && hasConsent && (
+                      {canModify && !ocrResults[doc.id] && hasConsent && (
                         <button 
-                          onClick={() => runMockExtract(doc.id)}
+                          onClick={() => runOCR(doc.id)}
+                          disabled={ocrProcessing === doc.id}
                           className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors flex items-center gap-1"
                         >
+                          <ScanText size={14} />
+                          {ocrProcessing === doc.id ? "OCR en cours..." : "Lancer OCR local"}
+                        </button>
+                      )}
+                      {canModify && ocrResults[doc.id]?.is_reviewed && !extractions[doc.id] && (
+                         <button 
+                          onClick={() => runMockExtract(doc.id)}
+                          className="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                        >
                           <Brain size={14} />
-                          Extraire les données
+                          Analyse AI (Mock)
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {extractions[doc.id] && (
+                  {/* OCR Results Panel */}
+                  {ocrResults[doc.id] && (
                     <div className="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                          <CheckCircle2 size={12} className="text-emerald-500" />
+                          <ScanText size={12} className="text-blue-500" />
+                          Texte extrait localement
+                        </span>
+                        {canReview && !ocrResults[doc.id].is_reviewed && (
+                          <button 
+                            onClick={() => reviewOCR(ocrResults[doc.id].id)}
+                            className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                          >
+                            <UserCheck size={14} />
+                            Valider le texte OCR
+                          </button>
+                        )}
+                        {ocrResults[doc.id].is_reviewed && (
+                           <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-bold uppercase">Texte Validé</span>
+                        )}
+                      </div>
+                      <div className="max-h-40 overflow-y-auto text-[11px] bg-white p-3 rounded-lg border text-slate-600 leading-relaxed whitespace-pre-wrap">
+                        {ocrResults[doc.id].extracted_text}
+                      </div>
+                      <p className="mt-2 text-[10px] text-slate-400 italic">
+                        Avertissement: OCR local — le texte peut contenir des erreurs. Vérification humaine obligatoire.
+                      </p>
+                    </div>
+                  )}
+
+                  {extractions[doc.id] && (
+                    <div className="mt-4 bg-indigo-50/30 rounded-xl p-4 border border-indigo-100">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1">
+                          <CheckCircle2 size={12} className="text-indigo-500" />
                           Analyse AI effectuée
                         </span>
                         {canReview && !extractions[doc.id].is_verified && (
@@ -464,13 +548,13 @@ export default function CaseDetail() {
             {hasConsent ? (
               <div>
                 <p className="text-sm text-emerald-800 mb-4 font-medium">
-                  Accord RGPD actif pour cet usager. Les outils AI sont opérationnels.
+                  Accord RGPD actif pour cet usager. L'OCR local et les outils AI sont opérationnels.
                 </p>
               </div>
             ) : (
               <div>
                 <p className="text-sm text-amber-800 mb-6">
-                  L'accord explicite de l'usager est requis avant toute extraction automatique.
+                  L'accord explicite de l'usager est requis avant toute extraction ou OCR local.
                 </p>
                 {canModify && (
                   <button 

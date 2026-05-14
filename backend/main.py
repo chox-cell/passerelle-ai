@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import cases, documents, auth, ai, copilot, privacy, reports, system, workspace
+from .routes import cases, documents, auth, ai, copilot, privacy, reports, system, workspace, ocr
 from .database import init_db
 import uvicorn
 from contextlib import asynccontextmanager
@@ -38,6 +38,7 @@ async def root():
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(cases.router, prefix="/api/v1/cases", tags=["Cases"])
+app.include_router(ocr.router, prefix="/api/v1/ocr", tags=["ocr"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["Documents"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI"])
 app.include_router(copilot.router, prefix="/api/v1/copilot", tags=["Copilot"])

@@ -5,6 +5,10 @@
 ### Data Storage
 - **Database**: Local PostgreSQL instance.
 - **Files**: Local `/uploads` directory on the server/host machine.
+- **Protection des Données (Local-First)**
+- [x] Le dossier `/uploads` est ignoré par Git.
+- [x] **OCR Local** : Utilisation de Tesseract en local sans aucune API cloud. Le texte extrait reste sur la machine de l'ONG.
+- [x] **Traitement PDF** : Conversion PDF vers images via `poppler` effectuée localement.
 - **Organization**: Documents are stored in per-case subdirectories: `/uploads/{case_id}/{document_uuid}.ext`.
 
 ### Document Security

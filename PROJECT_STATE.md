@@ -1,18 +1,17 @@
 # Passerelle AI — Project State
 
 ## Current Status
-**V1.3 Authentification & RBAC VÉRIFIÉ**. La plateforme est sécurisée pour un usage multi-utilisateur par association.
+**V1.4 OCR Offline (Phase 1 VÉRIFIÉ & STABLE)**. L'extraction de texte locale via Tesseract est opérationnelle, sécurisée par RBAC et isolée par Workspace.
 
-## Finished (V1.3)
-- ✅ **Local Auth**: Hachage Bcrypt, JWT local, Session persistence.
-- ✅ **Workspaces**: Isolation stricte des données entre organisations.
-- ✅ **RBAC**: Rôles Admin, Bénévole, Relecteur, Observateur implémentés et vérifiés.
-- ✅ **Hardening**: Protection de tous les endpoints (PDF, AI, Copilot, Documents).
-- ✅ **Audit Logs**: Traçabilité des actions par utilisateur et workspace.
+## Finished (V1.4 - Phase 1)
+- ✅ **Moteur OCR** : Intégration de Tesseract (Local-first).
+- ✅ **Sécurité OCR** : Vérification du consentement et isolation par Workspace.
+- ✅ **RBAC OCR** : Rôles Admin/Volunteer pour l'extraction, Admin/Reviewer pour la validation.
+- ✅ **Hardening Frontend** : Interface de revue humaine et protection des boutons par rôle.
+- ✅ **Stabilité** : Rapport de vérification V1.4 Phase 1 complété.
 
-## Next Phase (V1.4 - OCR Offline)
-- **OCR**: Intégration de Tesseract ou DocTR pour l'extraction locale sans cloud.
-- **Privacy**: Amélioration du nettoyage des fichiers temporaires.
+## Next Phase (V1.4 - Phase 2)
+- **AI Extraction** : Connecter le texte OCR validé au moteur d'extraction structurée (Remplacement des mocks).
 
 ## Roadmap Highlights
 1. **V1.3** - Auth & Workspaces (VÉRIFIÉ)

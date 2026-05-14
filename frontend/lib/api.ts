@@ -44,6 +44,17 @@ export interface Document {
   checksum?: string;
 }
 
+export interface OCRResult {
+  id: string;
+  document_id: string;
+  extracted_text: string;
+  corrected_text?: string;
+  engine: string;
+  pages_processed: number;
+  is_reviewed: boolean;
+  created_at: string;
+}
+
 export interface Extraction {
   id: string;
   document_id: string;

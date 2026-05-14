@@ -46,16 +46,28 @@ class Document(SQLModel, table=True):
     case_id: uuid.UUID = Field(foreign_key="case.id")
     file_name: str
     storage_path: str
-    file_type: Optional[str] = None # Original Content-Type from header
-    mime_type: Optional[str] = None # Validated MIME type
-    file_size: Optional[int] = None # Size in bytes
-    checksum: Optional[str] = None  # SHA-256
-    status: str = Field(default="uploaded") # uploaded | pending_review | approved | deleted
-    ocr_status: str = Field(default="pending")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    file_type: Optional[str] = None
+    mime_type: Optional[str] = None
+    file_size: Optional[int] = None
+    checksum: Optional[str] = None
+    status: str = "uploaded" # uploaded, ocr_processing, ocr_completed, human_review_required, approved
+    ocr_status: str = "pending" # pending, completed, failed
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     case: Case = Relationship(back_populates="documents")
     extractions: List["ExtractionResult"] = Relationship(back_populates="document")
+
+class OCRResult(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    document_id: uuid.UUID = Field(foreign_key="document.id")
+    extracted_text: str
+    corrected_text: Optional[str] = None
+    engine: str = "tesseract"
+    pages_processed: int = 1
+    status: str = "completed"
+    is_reviewed: bool = False
+    reviewed_by: Optional[uuid.UUID] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ExtractionResult(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
