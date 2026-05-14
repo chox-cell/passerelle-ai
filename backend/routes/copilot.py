@@ -4,10 +4,12 @@ from typing import List, Optional
 import uuid
 import json
 from ..database import get_session
-from ..models import Case, Document, ExtractionResult, AuditLog, Task
+from ..models import Case, Document, ExtractionResult, AuditLog, Task, Profile
+from .auth import get_current_user, RoleChecker
 from .privacy import verify_consent
 
 router = APIRouter()
+can_generate = RoleChecker(["admin", "volunteer"])
 
 DISCLAIMER = "Information à vérifier avec un professionnel qualifié ou une association spécialisée."
 
@@ -32,10 +34,14 @@ def get_approved_extraction(case_id: uuid.UUID, session: Session):
     return session.exec(ext_statement).first()
 
 @router.post("/cases/{case_id}/mock-summary")
-async def mock_summary(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def mock_summary(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_generate)
+):
     case = session.get(Case, case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
 
     extraction = get_approved_extraction(case_id, session)
     if not extraction:
@@ -58,6 +64,7 @@ async def mock_summary(case_id: uuid.UUID, session: Session = Depends(get_sessio
     # Audit Log
     audit = AuditLog(
         workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="COPILOT_SUMMARY_GENERATED",
         resource_type="case",
         resource_id=case.id,
@@ -69,10 +76,14 @@ async def mock_summary(case_id: uuid.UUID, session: Session = Depends(get_sessio
     return {"summary": summary}
 
 @router.post("/cases/{case_id}/mock-email")
-async def mock_email(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def mock_email(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_generate)
+):
     case = session.get(Case, case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
 
     extraction = get_approved_extraction(case_id, session)
     if not extraction:
@@ -93,6 +104,7 @@ async def mock_email(case_id: uuid.UUID, session: Session = Depends(get_session)
     # Audit Log
     audit = AuditLog(
         workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="COPILOT_EMAIL_GENERATED",
         resource_type="case",
         resource_id=case.id,
@@ -104,10 +116,14 @@ async def mock_email(case_id: uuid.UUID, session: Session = Depends(get_session)
     return {"email": email_body}
 
 @router.post("/cases/{case_id}/mock-tasks")
-async def mock_tasks(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def mock_tasks(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_generate)
+):
     case = session.get(Case, case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
 
     extraction = get_approved_extraction(case_id, session)
     if not extraction:
@@ -130,6 +146,7 @@ async def mock_tasks(case_id: uuid.UUID, session: Session = Depends(get_session)
     # Audit Log
     audit = AuditLog(
         workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="COPILOT_TASKS_GENERATED",
         resource_type="case",
         resource_id=case.id,

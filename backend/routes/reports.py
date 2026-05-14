@@ -13,18 +13,25 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 from ..database import get_session
-from ..models import Case, Document, ExtractionResult, Task, AuditLog, Consent, Report
+from ..models import Case, Document, ExtractionResult, Task, AuditLog, Consent, Report, Profile
+from .auth import get_current_user, RoleChecker
 from ..config import settings
 
 router = APIRouter()
+any_member = RoleChecker(["admin", "volunteer", "reviewer", "observer"])
+can_generate = RoleChecker(["admin", "volunteer", "reviewer"])
 
 DISCLAIMER = "Information à vérifier avec un professionnel qualifié ou une association spécialisée."
 
 @router.post("/cases/{case_id}/generate", response_model=Report)
-async def generate_report(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def generate_report(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_generate)
+):
     case = session.get(Case, case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
 
     # 1. Gather Data
     docs = session.exec(select(Document).where(Document.case_id == case_id)).all()
@@ -106,6 +113,7 @@ async def generate_report(case_id: uuid.UUID, session: Session = Depends(get_ses
     # 5. Audit Log
     audit = AuditLog(
         workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="REPORT_GENERATED",
         resource_type="report",
         resource_id=new_report.id,
@@ -119,11 +127,23 @@ async def generate_report(case_id: uuid.UUID, session: Session = Depends(get_ses
     return new_report
 
 @router.get("/cases/{case_id}", response_model=List[Report])
-async def list_reports(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def list_reports(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_member)
+):
+    case = session.get(Case, case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
+        
     return session.exec(select(Report).where(Report.case_id == case_id)).all()
 
 @router.get("/{report_id}/download")
-async def download_report(report_id: uuid.UUID, session: Session = Depends(get_session)):
+async def download_report(
+    report_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_member)
+):
     report = session.get(Report, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -132,9 +152,9 @@ async def download_report(report_id: uuid.UUID, session: Session = Depends(get_s
         raise HTTPException(status_code=404, detail="Physical file not found")
 
     # Audit Log
-    case = session.get(Case, report.case_id)
     audit = AuditLog(
         workspace_id=case.workspace_id if case else None,
+        user_id=current_user.id,
         action="REPORT_DOWNLOADED",
         resource_type="report",
         resource_id=report.id

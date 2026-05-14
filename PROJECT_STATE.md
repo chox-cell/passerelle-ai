@@ -1,40 +1,24 @@
 # Passerelle AI — Project State
 
 ## Current Status
-**V1 Demo-Ready**. The local-first foundation is complete and hardened for demonstration to NGOs and stakeholders.
+**V1.3 Authentification & RBAC VÉRIFIÉ**. La plateforme est sécurisée pour un usage multi-utilisateur par association.
 
-## Finished (V1)
-- ✅ **Backend**: FastAPI + SQLModel + PostgreSQL (Local-first).
-- ✅ **Frontend**: Next.js 14 + Tailwind (French-first UI).
-- ✅ **Case Management**: Full CRUD with timeline tracking.
-- ✅ **Document processing**: Secure local upload, SHA-256 integrity, MIME validation.
-- ✅ **Human-in-the-loop**: Full mock extraction and review workflow.
-- ✅ **NGO Copilot**: Mocked synthesis, email drafts, and task generation.
-- ✅ **Reports**: Local PDF generation with legal disclaimers.
-- ✅ **Privacy**: Consent management and full "Right to Erasure" deletion.
-- ✅ **Harden**: Seed scripts, demo reset utilities, and system health monitoring.
+## Finished (V1.3)
+- ✅ **Local Auth**: Hachage Bcrypt, JWT local, Session persistence.
+- ✅ **Workspaces**: Isolation stricte des données entre organisations.
+- ✅ **RBAC**: Rôles Admin, Bénévole, Relecteur, Observateur implémentés et vérifiés.
+- ✅ **Hardening**: Protection de tous les endpoints (PDF, AI, Copilot, Documents).
+- ✅ **Audit Logs**: Traçabilité des actions par utilisateur et workspace.
 
-## Next Phase (V1.5 & V2.0)
-- **Real AI Integration**: OCR and Extraction using OpenAI (Backend-only).
-- **Authentication**: JWT/Session based auth for volunteer logins.
-- **Legal RAG**: Intelligent search in foreigner law databases.
-- **Multi-tenancy**: Physical isolation for different NGOs.
+## Next Phase (V1.4 - OCR Offline)
+- **OCR**: Intégration de Tesseract ou DocTR pour l'extraction locale sans cloud.
+- **Privacy**: Amélioration du nettoyage des fichiers temporaires.
 
-## Final V1 Tree (Main Files)
-```text
-passerelle/
-├── backend/
-│   ├── models/             # DB Models (SQLModel)
-│   ├── routes/             # API Endpoints
-│   └── main.py             # App Entry
-├── frontend/
-│   ├── app/                # Next.js Pages
-│   └── lib/                # API Client
-├── docs/                   # Full Documentation
-├── scripts/                # Demo & Seed Scripts
-├── uploads/                # Local File Storage
-└── README.md               # User Guide
-```
+## Roadmap Highlights
+1. **V1.3** - Auth & Workspaces (VÉRIFIÉ)
+2. **V1.4** - Offline OCR Integration
+3. **V1.5** - Optional OpenAI Extraction
+4. **V2.0** - Voice Translation & Legal RAG
 
 ---
-*Status Update: 2026-05-14 — V1 Frozen.*
+*Status Update: 2026-05-14 — V1.3 Auth & RBAC Hardened and Verified.*

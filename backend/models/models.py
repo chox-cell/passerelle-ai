@@ -16,7 +16,9 @@ class Profile(SQLModel, table=True):
     workspace_id: Optional[uuid.UUID] = Field(default=None, foreign_key="workspace.id")
     full_name: str
     email: str = Field(index=True, unique=True)
+    password_hash: str
     role: str # admin, volunteer, social_worker
+    is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     workspace: Optional[Workspace] = Relationship(back_populates="profiles")

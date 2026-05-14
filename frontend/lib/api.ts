@@ -1,5 +1,30 @@
 export const API_BASE_URL = "http://localhost:8000/api/v1";
 
+export const getAuthHeaders = () => {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("token");
+  return {
+    "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+};
+
+export const handleApiResponse = async (res: Response) => {
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
+    throw new Error("Session expirée. Veuillez vous reconnecter.");
+  }
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Erreur serveur: ${res.status}`);
+  }
+  return res.json();
+};
+
 export interface Case {
   id: string;
   migrant_name: string;

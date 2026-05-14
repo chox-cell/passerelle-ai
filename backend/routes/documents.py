@@ -7,10 +7,13 @@ import uuid
 import hashlib
 import magic
 from ..database import get_session
-from ..models import Document, Case, AuditLog
+from ..models import Document, Case, AuditLog, Profile
+from .auth import get_current_user, RoleChecker
 from ..config import settings
 
 router = APIRouter()
+any_member = RoleChecker(["admin", "volunteer", "reviewer", "observer"])
+can_modify = RoleChecker(["admin", "volunteer"])
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
@@ -20,12 +23,13 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/png", "image/jpeg"}
 async def upload_document(
     case_id: uuid.UUID,
     file: UploadFile = File(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_modify)
 ):
     # 1. Validate case exists
     case = session.get(Case, case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
 
     # 2. Basic extension validation
     file_ext = os.path.splitext(file.filename)[1].lower()
@@ -77,6 +81,7 @@ async def upload_document(
     # 10. Audit Log
     audit = AuditLog(
         workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="DOCUMENT_UPLOAD",
         resource_type="document",
         resource_id=new_doc.id,
@@ -90,15 +95,23 @@ async def upload_document(
     return new_doc
 
 @router.get("/{document_id}/metadata", response_model=Document)
-async def get_document_metadata(document_id: uuid.UUID, session: Session = Depends(get_session)):
+async def get_document_metadata(
+    document_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_member)
+):
     doc = session.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    # Audit Log
     case = session.get(Case, doc.case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Document not found or access denied")
+    
+    # Audit Log
     audit = AuditLog(
-        workspace_id=case.workspace_id if case else None,
+        workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="DOCUMENT_METADATA_READ",
         resource_type="document",
         resource_id=doc.id
@@ -109,24 +122,40 @@ async def get_document_metadata(document_id: uuid.UUID, session: Session = Depen
     return doc
 
 @router.get("/case/{case_id}", response_model=List[Document])
-async def list_case_documents(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def list_case_documents(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_member)
+):
+    case = session.get(Case, case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found or access denied")
+
     documents = session.exec(select(Document).where(Document.case_id == case_id)).all()
     return documents
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: uuid.UUID, session: Session = Depends(get_session)):
+async def delete_document(
+    document_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_modify)
+):
     doc = session.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    case = session.get(Case, doc.case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Document not found or access denied")
 
     # 1. Remove local file
     if os.path.exists(doc.storage_path):
         os.remove(doc.storage_path)
 
     # 2. Add Audit Log
-    case = session.get(Case, doc.case_id)
     audit = AuditLog(
-        workspace_id=case.workspace_id if case else None,
+        workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="DOCUMENT_DELETE",
         resource_type="document",
         resource_id=doc.id,

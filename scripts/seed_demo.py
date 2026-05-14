@@ -15,10 +15,12 @@ def seed_demo():
         session.refresh(workspace)
 
         # 2. Create Profile
+        from backend.services.auth_utils import hash_password
         profile = Profile(
             workspace_id=workspace.id,
             full_name="Bénévole Demo",
             email="demo@passerelle.ai",
+            password_hash=hash_password("demo123"),
             role="volunteer"
         )
         session.add(profile)
@@ -91,6 +93,7 @@ def seed_demo():
 
         session.commit()
         print(f"✅ Demo case created with ID: {case.id}")
+        print(f"🔑 Demo Login: demo@passerelle.ai / demo123")
 
 if __name__ == "__main__":
     seed_demo()

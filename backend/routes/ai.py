@@ -5,12 +5,16 @@ import uuid
 import json
 from datetime import datetime
 from ..database import get_session
-from ..models import Document, ExtractionResult, Case, AuditLog
+from ..models import Document, ExtractionResult, Case, AuditLog, Profile
+from .auth import get_current_user, RoleChecker
 from .privacy import verify_consent
 
 from pydantic import BaseModel
 
 router = APIRouter()
+any_member = RoleChecker(["admin", "volunteer", "reviewer", "observer"])
+can_extract = RoleChecker(["admin", "volunteer"])
+can_review = RoleChecker(["admin", "reviewer"])
 
 # Request model for review
 class ExtractionReviewRequest(BaseModel):
@@ -36,11 +40,19 @@ def format_extraction(extraction: ExtractionResult) -> dict:
     }
 
 @router.post("/documents/{document_id}/mock-extract")
-async def mock_extract(document_id: uuid.UUID, session: Session = Depends(get_session)):
+async def mock_extract(
+    document_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_extract)
+):
     # 1. Validate document exists
     doc = session.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document non trouvé")
+    
+    case = session.get(Case, doc.case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Document non trouvé ou accès refusé")
 
     # 2. Verify Consent
     verify_consent(doc.case_id, "ai_extraction", session)
@@ -68,9 +80,9 @@ async def mock_extract(document_id: uuid.UUID, session: Session = Depends(get_se
     session.add(extraction)
 
     # 5. Audit Log
-    case = session.get(Case, doc.case_id)
     audit = AuditLog(
-        workspace_id=case.workspace_id if case else None,
+        workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="EXTRACTION_MOCK_GENERATED",
         resource_type="extraction",
         resource_id=extraction.id,
@@ -88,7 +100,18 @@ async def mock_extract(document_id: uuid.UUID, session: Session = Depends(get_se
     return format_extraction(extraction)
 
 @router.get("/documents/{document_id}/extraction")
-async def get_extraction(document_id: uuid.UUID, session: Session = Depends(get_session)):
+async def get_extraction(
+    document_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_member)
+):
+    doc = session.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document non trouvé")
+    
+    case = session.get(Case, doc.case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Document non trouvé ou accès refusé")
     statement = select(ExtractionResult).where(ExtractionResult.document_id == document_id).order_by(ExtractionResult.created_at.desc())
     extraction = session.exec(statement).first()
     
@@ -96,10 +119,9 @@ async def get_extraction(document_id: uuid.UUID, session: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Aucune extraction trouvée pour ce document")
 
     # Audit Log
-    doc = session.get(Document, document_id)
-    case = session.get(Case, doc.case_id) if doc else None
     audit = AuditLog(
-        workspace_id=case.workspace_id if case else None,
+        workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="EXTRACTION_VIEWED",
         resource_type="extraction",
         resource_id=extraction.id
@@ -113,11 +135,17 @@ async def get_extraction(document_id: uuid.UUID, session: Session = Depends(get_
 async def review_extraction(
     extraction_id: uuid.UUID, 
     review: ExtractionReviewRequest,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(can_review)
 ):
     extraction = session.get(ExtractionResult, extraction_id)
     if not extraction:
         raise HTTPException(status_code=404, detail="Extraction non trouvée")
+    
+    doc = session.get(Document, extraction.document_id)
+    case = session.get(Case, doc.case_id) if doc else None
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Extraction non trouvée ou accès refusé")
 
     # Update data
     extraction.is_verified = review.is_verified
@@ -135,6 +163,8 @@ async def review_extraction(
 
     # Audit Log
     audit = AuditLog(
+        workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="EXTRACTION_REVIEWED",
         resource_type="extraction",
         resource_id=extraction.id,

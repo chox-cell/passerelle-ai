@@ -3,17 +3,16 @@
 Infrastructure opérationnelle pour les ONG aidant les migrants en France. 
 **Local-first, Privacy-first, French-first.**
 
-![Status](https://img.shields.io/badge/Status-V1--Demo--Ready-emerald?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-V1.3--Auth--Ready-emerald?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)
 
 ## 🎯 Qui est ce pour ?
-Passerelle AI est conçu pour les associations, les ONG et les travailleurs sociaux qui accompagnent les usagers dans leurs démarches administratives et juridiques complexes. Notre priorité est de protéger les données sensibles tout en automatisant les tâches répétitives.
+Passerelle AI est conçu pour les associations, les ONG et les travailleurs sociaux qui accompagnent les usagers dans leurs démarches administratives et juridiques complexes.
 
 ## 🛡️ Pourquoi le "Local-First" ?
-La plupart des outils modernes envoient vos données dans le cloud. Pour une ONG traitant des données de migrants, cela pose des risques de sécurité et de souveraineté.
 - **Confidentialité Totale**: Vos données ne quittent jamais votre machine.
 - **Résilience**: Fonctionne sans internet.
-- **Contrôle**: Vous êtes le seul propriétaire de la base de données.
+- **Souveraineté**: Vous êtes le seul propriétaire de la base de données.
 
 ## 🏗️ Architecture du Système
 
@@ -24,6 +23,7 @@ graph TD
     end
     subgraph Backend
         API[FastAPI Router]
+        AUTH[Local JWT Auth]
         PDF[ReportLab Generator]
     end
     subgraph Storage
@@ -32,34 +32,32 @@ graph TD
     end
 
     UI <--> API
+    API <--> AUTH
     API <--> DB
     API <--> DISK
     API --> PDF
 ```
 
-## 🔄 Workflow Opérationnel
+## 🔐 Authentification Locale (V1.3)
+Passerelle AI gère désormais les comptes utilisateurs par association.
+- **Rôles** : Administrateur, Bénévole, Relecteur, Observateur.
+- **Isolation** : Séparation stricte des données entre associations (Workspaces).
+- **Login Démo** : `demo@passerelle.ai` / `demo123`
 
-```mermaid
-sequenceDiagram
-    participant B as Bénévole
-    participant S as Système
-    participant D as Disque Local
-
-    B->>S: Créer Dossier Usager
-    B->>S: Enregistrer Consentement RGPD
-    B->>S: Télécharger Document (PDF/Image)
-    S->>D: Stockage Isolé & Chiffré (V2)
-    B->>S: Lancer Extraction AI (Simulée V1)
-    B->>S: Revue & Validation Humaine
-    S->>S: NGO Copilot (Synthèse & Tâches)
-    B->>S: Générer Rapport PDF Consolidé
-```
+## 🤝 Flux NGO Standard
+1. **Inscription** : L'administrateur crée l'espace de l'association.
+2. **Équipe** : L'administrateur ajoute les bénévoles et relecteurs.
+3. **Dossier** : Création d'un dossier usager et signature du consentement.
+4. **Documents** : Importation sécurisée des documents.
+5. **Revue** : Validation humaine des données extraites.
+6. **Rapport** : Génération de la synthèse PDF.
 
 ## 🚀 Lancement Rapide (Demo)
 
 ### Initialisation
+Assurez-vous que PostgreSQL est lancé, puis :
 ```bash
-# Réinitialise la base et injecte les données de démo
+chmod +x scripts/demo_reset.sh
 ./scripts/demo_reset.sh
 ```
 
@@ -73,20 +71,11 @@ cd backend && python main.py
 ```bash
 cd frontend && npm run dev
 ```
-*Accès : http://localhost:3000*
-
-## 🤝 Pilot avec une association
-Nous lançons une phase pilote de 2 semaines avec des associations partenaires pour valider l'outil en conditions réelles.
-- **Kit de Pilotage** : [Consulter le plan de test](./docs/pilot-plan-fr.md)
-- **Formulaire de Feedback** : [Partager vos retours](./FEEDBACK_FORM_FR.md)
-- **Roadmap** : [Voir les prochaines étapes](./docs/v1-2-roadmap.md)
 
 ## 📚 Documentation
-- [Release Notes V1](./RELEASE_NOTES_V1.md)
-- [Script de Démo Français](./DEMO_SCRIPT_FR.md)
-- [ NGO One-Pager](./docs/ngo-onepager-fr.md)
-- [Stack Technique](./docs/technical-stack.md)
-- [Politique de Confidentialité](./docs/gdpr.md)
+- [Matrice des Rôles V1.3](./docs/v1-3-auth-plan.md)
+- [Plan de Test Pilote](./docs/pilot-plan-fr.md)
+- [Politique RGPD](./docs/gdpr.md)
 
 ---
-*Information à vérifier avec un professionnel qualifié ou une association spécialisée. Zéro donnée cloud en V1.*
+*Information à vérifier avec un professionnel qualifié. Zéro donnée cloud en V1.*

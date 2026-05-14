@@ -5,10 +5,13 @@ import uuid
 import os
 import shutil
 from ..database import get_session
-from ..models import Case, Document, ExtractionResult, Task, AuditLog, Consent
+from ..models import Case, Document, ExtractionResult, Task, AuditLog, Consent, Profile
+from .auth import get_current_user, RoleChecker
 from ..config import settings
 
 router = APIRouter()
+admin_only = RoleChecker(["admin"])
+any_volunteer = RoleChecker(["admin", "volunteer"])
 
 def verify_consent(case_id: uuid.UUID, consent_type: str, session: Session):
     statement = select(Consent).where(
@@ -25,9 +28,14 @@ def verify_consent(case_id: uuid.UUID, consent_type: str, session: Session):
     return True
 
 @router.post("/cases/{case_id}/consent", response_model=Consent)
-async def create_consent(case_id: uuid.UUID, consent: Consent, session: Session = Depends(get_session)):
+async def create_consent(
+    case_id: uuid.UUID, 
+    consent: Consent, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_volunteer)
+):
     case = session.get(Case, case_id)
-    if not case:
+    if not case or case.workspace_id != current_user.workspace_id:
         raise HTTPException(status_code=404, detail="Case not found")
     
     consent.case_id = case_id
@@ -36,6 +44,7 @@ async def create_consent(case_id: uuid.UUID, consent: Consent, session: Session 
     # Audit Log
     audit = AuditLog(
         workspace_id=case.workspace_id,
+        user_id=current_user.id,
         action="CONSENT_GRANTED" if consent.granted else "CONSENT_REFUSED",
         resource_type="consent",
         resource_id=consent.id,
@@ -48,12 +57,24 @@ async def create_consent(case_id: uuid.UUID, consent: Consent, session: Session 
     return consent
 
 @router.get("/cases/{case_id}/consents", response_model=List[Consent])
-async def list_consents(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def list_consents(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_volunteer)
+):
+    case = session.get(Case, case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
     statement = select(Consent).where(Consent.case_id == case_id)
     return session.exec(statement).all()
 
 @router.delete("/cases/{case_id}/delete-all")
-async def delete_all_data(case_id: uuid.UUID, session: Session = Depends(get_session)):
+async def delete_all_data(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(admin_only)
+):
     case = session.get(Case, case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -94,11 +115,17 @@ async def delete_all_data(case_id: uuid.UUID, session: Session = Depends(get_ses
     return {"ok": True, "message": "Toutes les données associées au dossier ont été supprimées définitivement."}
 
 @router.get("/cases/{case_id}/audit-logs", response_model=List[AuditLog])
-async def get_audit_logs(case_id: uuid.UUID, session: Session = Depends(get_session)):
-    # Note: resource_id might be the case_id or related document_ids.
-    # For simplicity, we search for resource_id = case_id or logs with case_id in details.
-    # A better way would be to link AuditLog to case_id directly.
+async def get_audit_logs(
+    case_id: uuid.UUID, 
+    session: Session = Depends(get_session),
+    current_user: Profile = Depends(any_volunteer)
+):
+    case = session.get(Case, case_id)
+    if not case or case.workspace_id != current_user.workspace_id:
+        raise HTTPException(status_code=404, detail="Case not found")
+
     statement = select(AuditLog).where(
-        (AuditLog.resource_id == case_id) | (AuditLog.resource_type == "case")
+        (AuditLog.workspace_id == current_user.workspace_id) &
+        ((AuditLog.resource_id == case_id) | (AuditLog.resource_type == "case"))
     ).order_by(AuditLog.created_at.desc())
     return session.exec(statement).all()

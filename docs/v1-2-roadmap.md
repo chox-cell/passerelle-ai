@@ -7,11 +7,11 @@
 - ✅ Export de rapports PDF.
 - ✅ Documentation Pilote et kit de démonstration.
 
-## V1.3 — Authentification & Multi-ténacité
-- [ ] Système de login local (Volunteer/Admin).
-- [ ] Chiffrement des mots de passe (Bcrypt).
-- [ ] Isolation logique stricte entre plusieurs comptes bénévoles.
-- [ ] Gestion simple des profils utilisateurs.
+## V1.3 — Authentification & Sécurité des Espaces
+- [ ] Système de login local pour les bénévoles.
+- [ ] Contrôle d'accès par rôle (Admin, Volunteer, Reviewer).
+- [ ] Isolation stricte par Espace de Travail (Workspaces).
+- [ ] Chiffrement At-Rest et Sessions sécurisées.
 
 ## V1.4 — OCR & Analyse Offline (V1.5)
 - [ ] Intégration de Tesseract ou GPT-4o (via backend sécurisé).
