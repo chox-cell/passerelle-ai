@@ -6,7 +6,8 @@ import Link from "next/link";
 import { 
   ArrowLeft, ShieldCheck, Upload, FileCheck, Brain, 
   Mail, ClipboardList, Trash2, AlertCircle, CheckCircle2,
-  Clock, Download, UserCheck, Shield, ScanText, FileJson
+  Clock, Download, UserCheck, Shield, ScanText, FileJson,
+  ChevronRight, ExternalLink, Filter, Eye, History, Split
 } from "lucide-react";
 import { API_BASE_URL, Case, Document, Extraction, Task, Consent, Report, OCRResult, getAuthHeaders, handleApiResponse } from "@/lib/api";
 
@@ -19,9 +20,9 @@ export default function CaseDetail() {
   const [consents, setConsents] = useState<Consent[]>([]);
   const [extractions, setExtractions] = useState<Record<string, Extraction>>({});
   const [ocrResults, setOcrResults] = useState<Record<string, OCRResult>>({});
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [activeDoc, setActiveDoc] = useState<Document | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -51,6 +52,7 @@ export default function CaseDetail() {
       const docsRes = await fetch(`${API_BASE_URL}/documents/case/${id}`, { headers: getAuthHeaders() });
       const docs = await handleApiResponse(docsRes);
       setDocuments(docs);
+      if (docs.length > 0) setActiveDoc(docs[0]);
 
       const consentRes = await fetch(`${API_BASE_URL}/privacy/cases/${id}/consents`, { headers: getAuthHeaders() });
       setConsents(await handleApiResponse(consentRes));
@@ -78,16 +80,12 @@ export default function CaseDetail() {
 
     } catch (err: any) {
       setError(err.message);
-      if (err.message.includes("expirée")) {
-        router.push("/login");
-      }
     } finally {
       setLoading(false);
     }
   };
 
   const grantConsent = async () => {
-    if (!canModify) return;
     try {
       const res = await fetch(`${API_BASE_URL}/privacy/cases/${id}/consent`, {
         method: "POST",
@@ -100,57 +98,19 @@ export default function CaseDetail() {
       });
       await handleApiResponse(res);
       fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!canModify) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const headers = getAuthHeaders();
-    delete (headers as any)["Content-Type"];
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/documents/upload/${id}`, {
-        method: "POST",
-        headers: headers,
-        body: formData,
-      });
-      await handleApiResponse(res);
-      fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setUploading(false);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
   const runOCR = async (docId: string) => {
-    if (!canModify) return;
     setOcrProcessing(docId);
     try {
-      const res = await fetch(`${API_BASE_URL}/ocr/documents/${docId}/extract`, { 
-        method: "POST",
-        headers: getAuthHeaders()
-      });
+      const res = await fetch(`${API_BASE_URL}/ocr/documents/${docId}/extract`, { method: "POST", headers: getAuthHeaders() });
       await handleApiResponse(res);
       fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setOcrProcessing(null);
-    }
+    } catch (err: any) { alert(err.message); } finally { setOcrProcessing(null); }
   };
 
   const reviewOCR = async (ocrId: string) => {
-    if (!canReview) return;
     try {
       const res = await fetch(`${API_BASE_URL}/ocr/${ocrId}/review`, {
         method: "PATCH",
@@ -159,30 +119,19 @@ export default function CaseDetail() {
       });
       await handleApiResponse(res);
       fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
   const extractFromOCR = async (docId: string) => {
-    if (!canReview) return;
     setExtracting(docId);
     try {
-      const res = await fetch(`${API_BASE_URL}/ai/documents/${docId}/extract-from-reviewed-ocr`, { 
-        method: "POST",
-        headers: getAuthHeaders()
-      });
+      const res = await fetch(`${API_BASE_URL}/ai/documents/${docId}/extract-from-reviewed-ocr`, { method: "POST", headers: getAuthHeaders() });
       await handleApiResponse(res);
       fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setExtracting(null);
-    }
+    } catch (err: any) { alert(err.message); } finally { setExtracting(null); }
   };
 
   const approveExtraction = async (extId: string) => {
-    if (!canReview) return;
     try {
       const res = await fetch(`${API_BASE_URL}/ai/extractions/${extId}/review`, {
         method: "PATCH",
@@ -191,336 +140,284 @@ export default function CaseDetail() {
       });
       await handleApiResponse(res);
       fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const generateSummary = async () => {
-    if (!canModify) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/copilot/cases/${id}/mock-summary`, { 
-        method: "POST",
-        headers: getAuthHeaders()
-      });
-      await handleApiResponse(res);
-      fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const generateTasks = async () => {
-    if (!canModify) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/copilot/cases/${id}/mock-tasks`, { 
-        method: "POST",
-        headers: getAuthHeaders()
-      });
-      const data = await handleApiResponse(res);
-      setTasks(data.tasks);
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const generatePDFReport = async () => {
-    if (!canReport) return;
-    setGeneratingReport(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/reports/cases/${id}/generate`, { 
-        method: "POST",
-        headers: getAuthHeaders()
-      });
-      await handleApiResponse(res);
-      fetchData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setGeneratingReport(false);
-    }
-  };
-
-  const downloadReport = (reportId: string) => {
-    window.open(`${API_BASE_URL}/reports/${reportId}/download?token=${localStorage.getItem("token")}`, '_blank');
-  };
-
-  const deleteCase = async () => {
-    if (!isAdmin) return;
-    if (!confirm("Voulez-vous vraiment supprimer définitivement toutes les données de ce dossier ?")) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/privacy/cases/${id}/delete-all`, { 
-        method: "DELETE",
-        headers: getAuthHeaders()
-      });
-      await handleApiResponse(res);
-      router.push("/");
-    } catch (err: any) {
-      alert(err.message);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
   const role = userProfile?.role || "observer";
   const isAdmin = role === "admin";
   const canModify = role === "admin" || role === "volunteer";
   const canReview = role === "admin" || role === "reviewer";
-  const canReport = role === "admin" || role === "volunteer" || role === "reviewer";
+  const hasConsent = consents.some(c => c.consent_type === "ai_extraction" && c.granted);
 
-  if (loading) return <div className="p-20 text-center animate-pulse">Chargement du dossier...</div>;
-  if (error) return (
-    <div className="p-20 text-center">
-      <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
-      <h2 className="text-xl font-bold mb-2">Erreur d'accès</h2>
-      <p className="text-slate-500 mb-8">{error}</p>
-      <Link href="/" className="bg-slate-900 text-white px-6 py-2 rounded-xl">Retour</Link>
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-slate-500 font-medium animate-pulse text-sm">Initialisation de l'espace de travail...</p>
     </div>
   );
 
-  const hasConsent = consents.some(c => c.consent_type === "ai_extraction" && c.granted);
-
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 mb-8 transition-colors font-medium">
-        <ArrowLeft size={18} />
-        Retour au tableau de bord
-      </Link>
-
-      <div className="flex justify-between items-start mb-12">
+    <div className="max-w-[1600px] mx-auto">
+      {/* Header Info */}
+      <div className="mb-8 flex justify-between items-end">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-bold text-slate-900">{caseData?.migrant_name}</h1>
-            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{caseData?.migrant_name}</h1>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
               Dossier #{id.toString().slice(0, 8)}
             </span>
           </div>
-          <div className="flex gap-4 items-center">
-             <span className="text-slate-400 text-sm font-medium">
-               Créé le {new Date(caseData?.created_at || "").toLocaleDateString('fr-FR')}
-             </span>
-             {caseData?.status && (
-               <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase">
-                 {caseData.status}
-               </span>
-             )}
+          <div className="flex gap-6 items-center">
+             <div className="flex items-center gap-2 text-slate-500 text-sm">
+               <Clock size={14} />
+               <span>Ouvert le {new Date(caseData?.created_at || "").toLocaleDateString('fr-FR')}</span>
+             </div>
+             <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${caseData?.status === 'open' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                <span className="text-sm font-semibold text-slate-700 capitalize">{caseData?.status || 'Inconnu'}</span>
+             </div>
           </div>
         </div>
-        {isAdmin && (
-          <button 
-            onClick={deleteCase}
-            className="text-red-400 hover:text-red-600 p-2 rounded-xl transition-colors flex items-center gap-2 text-sm font-bold"
-          >
-            <Trash2 size={18} />
-            Supprimer tout
-          </button>
-        )}
+        <div className="flex gap-3">
+          {isAdmin && (
+             <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all">
+               <Trash2 size={16} /> Supprimer le dossier
+             </button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          
-          <section className="bg-white border rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <FileCheck className="text-blue-600" />
-                Documents
-              </h2>
-              {canModify && (
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
-                >
-                  <Upload size={16} />
-                  {uploading ? "Chargement..." : "Ajouter un document"}
-                </button>
-              )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleUpload} 
-                className="hidden" 
-                accept=".pdf,.png,.jpg,.jpeg"
-              />
+      <div className="grid grid-cols-12 gap-8">
+        {/* Left: Timeline & Summary */}
+        <div className="col-span-3 space-y-8">
+          <section className="bg-white rounded-2xl border shadow-sm p-6 overflow-hidden relative">
+            <div className="flex items-center gap-2 mb-6 text-slate-900">
+               <History size={18} className="text-blue-600" />
+               <h2 className="font-bold">Timeline du Dossier</h2>
             </div>
-
-            <div className="space-y-4">
-              {documents.map(doc => (
-                <div key={doc.id} className="border rounded-xl p-4 hover:border-blue-100 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center">
-                        <Download size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-slate-900">{doc.file_name}</h4>
-                        <p className="text-xs text-slate-500 uppercase tracking-tighter">
-                          Statut: <span className={doc.status === "approved" ? "text-emerald-600 font-bold" : "text-blue-500"}>{doc.status}</span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {canModify && !ocrResults[doc.id] && hasConsent && (
-                        <button 
-                          onClick={() => runOCR(doc.id)}
-                          disabled={ocrProcessing === doc.id}
-                          className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors flex items-center gap-1"
-                        >
-                          <ScanText size={14} />
-                          {ocrProcessing === doc.id ? "OCR..." : "OCR local"}
-                        </button>
-                      )}
-                      {canReview && ocrResults[doc.id]?.is_reviewed && !extractions[doc.id] && (
-                         <button 
-                          onClick={() => extractFromOCR(doc.id)}
-                          disabled={extracting === doc.id}
-                          className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1"
-                        >
-                          <FileJson size={14} />
-                          {extracting === doc.id ? "Analyse..." : "Extraire du texte"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {ocrResults[doc.id] && (
-                    <div className="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                          <ScanText size={12} className="text-blue-500" />
-                          Texte OCR local
-                        </span>
-                        {canReview && !ocrResults[doc.id].is_reviewed && (
-                          <button 
-                            onClick={() => reviewOCR(ocrResults[doc.id].id)}
-                            className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
-                          >
-                            Valider le texte
-                          </button>
-                        )}
-                        {ocrResults[doc.id].is_reviewed && (
-                           <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-bold uppercase">Texte Validé</span>
-                        )}
-                      </div>
-                      <div className="max-h-32 overflow-y-auto text-[11px] bg-white p-3 rounded-lg border text-slate-600 leading-relaxed whitespace-pre-wrap italic">
-                        {ocrResults[doc.id].extracted_text}
-                      </div>
-                    </div>
-                  )}
-
-                  {extractions[doc.id] && (
-                    <div className="mt-4 bg-indigo-50/30 rounded-xl p-4 border border-indigo-100">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1">
-                          <CheckCircle2 size={12} className="text-indigo-500" />
-                          Extraction structurée
-                        </span>
-                        {canReview && !extractions[doc.id].is_verified && (
-                          <button 
-                            onClick={() => approveExtraction(extractions[doc.id].id)}
-                            className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                          >
-                            <UserCheck size={14} />
-                            Approuver l'analyse
-                          </button>
-                        )}
-                      </div>
-                      <div className="text-[11px] bg-white p-4 rounded-lg border text-slate-600 space-y-2">
-                         <p><b>Type:</b> {JSON.parse(extractions[doc.id].raw_json).document_type}</p>
-                         <p><b>Institution:</b> {JSON.parse(extractions[doc.id].raw_json).institution}</p>
-                         <p><b>Dates:</b> {JSON.parse(extractions[doc.id].raw_json).important_dates?.join(', ')}</p>
-                         <p className="text-indigo-600"><b>Synthèse:</b> {JSON.parse(extractions[doc.id].raw_json).summary_fr}</p>
-                         <div className="pt-2 border-t text-[10px] text-slate-400 italic">
-                           Confiance: {JSON.parse(extractions[doc.id].raw_json).confidence_score * 100}% | {JSON.parse(extractions[doc.id].raw_json).disclaimer}
-                         </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+            
+            <div className="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+              <TimelineItem active icon={ShieldCheck} label="Consentement validé" date="Aujourd'hui" status="completed" />
+              <TimelineItem active={documents.length > 0} icon={Download} label="Documents importés" date={documents.length > 0 ? "Aujourd'hui" : "--"} status={documents.length > 0 ? "completed" : "pending"} />
+              <TimelineItem active={Object.keys(ocrResults).length > 0} icon={ScanText} label="Extraction OCR" status={Object.keys(ocrResults).length > 0 ? "completed" : "pending"} />
+              <TimelineItem active={Object.keys(extractions).length > 0} icon={FileJson} label="Analyse structurée" status={Object.keys(extractions).length > 0 ? "completed" : "pending"} />
+              <TimelineItem active={caseData?.status === 'approved'} icon={CheckCircle2} label="Approbation finale" status="pending" />
             </div>
           </section>
 
-          <section className="bg-white border rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Brain className="text-indigo-600" />
-                NGO Copilot
-              </h2>
-              {canModify && (
-                <div className="flex gap-2">
-                  <button onClick={generateSummary} className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2">
-                    <Mail size={16} /> Synthèse
-                  </button>
-                  <button onClick={generateTasks} className="bg-teal-50 text-teal-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-100 transition-colors flex items-center gap-2">
-                    <ClipboardList size={16} /> Tâches
-                  </button>
-                </div>
-              )}
-            </div>
-            {caseData?.summary && (
-              <div className="bg-indigo-50/30 border border-indigo-100 rounded-xl p-6 mb-6">
-                <h4 className="text-sm font-bold text-indigo-900 mb-3 uppercase tracking-widest">Synthèse opérationnelle</h4>
-                <div className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">{caseData.summary}</div>
-              </div>
-            )}
-          </section>
-
-          <section className="bg-white border rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <FileCheck className="text-emerald-600" /> Sorties PDF
-              </h2>
-              {canReport && (
-                <button onClick={generatePDFReport} disabled={generatingReport} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2">
-                  <Download size={16} /> {generatingReport ? "Génération..." : "Générer rapport"}
-                </button>
-              )}
-            </div>
-            <div className="space-y-3">
-              {reports.map(report => (
-                <div key={report.id} className="flex items-center justify-between p-4 bg-slate-50 border rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white border rounded-lg flex items-center justify-center text-emerald-600"><span>📄</span></div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">Rapport de synthèse</p>
-                      <p className="text-[11px] text-slate-500">Créé le {new Date(report.created_at).toLocaleString('fr-FR')}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => downloadReport(report.id)} className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2">
-                    <Download size={14} /> Télécharger
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-6">
-          <div className={`rounded-3xl p-6 border ${hasConsent ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100"}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className={hasConsent ? "text-emerald-600" : "text-amber-600"} size={24} />
-              <h3 className="font-bold text-slate-900">Confidentialité</h3>
-            </div>
-            {hasConsent ? (
-              <p className="text-sm text-emerald-800 font-medium">Accord RGPD actif. L'OCR local et l'extraction déterministe sont opérationnels.</p>
-            ) : (
-              <div>
-                <p className="text-sm text-amber-800 mb-6">L'accord explicite de l'usager est requis avant tout traitement.</p>
-                {canModify && (
-                  <button onClick={grantConsent} className="w-full bg-amber-600 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-amber-700">Recueillir le consentement</button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-slate-50 rounded-3xl p-6 border border-slate-200">
+          <section className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl shadow-slate-200">
              <div className="flex items-center gap-2 mb-4">
-                <Shield className="text-slate-400" size={20} />
-                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-widest">Rôle Actuel</h3>
+                <Brain className="text-blue-400" size={20} />
+                <h3 className="font-bold text-sm uppercase tracking-wider">Résumé Pilot</h3>
              </div>
-             <p className="text-sm text-slate-600 font-medium capitalize">{role}</p>
+             <p className="text-slate-300 text-sm leading-relaxed mb-6 italic">
+               "{caseData?.summary || "Aucun résumé généré pour le moment."}"
+             </p>
+             <Link href={`/case/${id}/copilot`} className="block w-full text-center bg-white/10 hover:bg-white/20 py-2 rounded-xl text-xs font-bold transition-all">
+                Ouvrir NGO Copilot
+             </Link>
+          </section>
+        </div>
+
+        {/* Right: Split-View Workspace */}
+        <div className="col-span-9 space-y-8">
+          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden min-h-[700px] flex flex-col">
+            {/* Workspace Header */}
+            <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
+               <div className="flex gap-4">
+                 {documents.map(doc => (
+                   <button 
+                     key={doc.id}
+                     onClick={() => setActiveDoc(doc)}
+                     className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                       activeDoc?.id === doc.id 
+                         ? "bg-white border-blue-200 text-blue-600 shadow-sm" 
+                         : "bg-transparent border-transparent text-slate-400 hover:text-slate-600"
+                     }`}
+                   >
+                     {doc.file_name}
+                   </button>
+                 ))}
+                 {canModify && (
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
+                    >
+                      +
+                    </button>
+                 )}
+                 <input type="file" ref={fileInputRef} className="hidden" />
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className="text-[10px] text-slate-400 font-bold uppercase mr-2">Mode:</span>
+                 <button className="flex items-center gap-2 px-3 py-1 bg-white border rounded-lg text-[10px] font-bold text-slate-600 shadow-sm">
+                    <Split size={12} /> Split View
+                 </button>
+               </div>
+            </div>
+
+            {/* Workspace Content */}
+            <div className="flex-1 grid grid-cols-2">
+               {/* Left: Preview */}
+               <div className="border-r bg-slate-50/50 flex flex-col items-center justify-center p-8 relative">
+                  {activeDoc ? (
+                    <div className="w-full h-full bg-white border rounded-xl shadow-2xl overflow-hidden flex flex-col">
+                       <div className="p-3 border-b flex justify-between items-center bg-slate-50">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">{activeDoc.file_name}</span>
+                          <ExternalLink size={12} className="text-slate-400" />
+                       </div>
+                       <div className="flex-1 flex items-center justify-center text-slate-300">
+                          <FileText size={64} strokeWidth={1} />
+                       </div>
+                       <div className="p-4 border-t bg-slate-50 text-center">
+                          <p className="text-[10px] text-slate-400 font-medium">Prévisualisation locale sécurisée</p>
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-slate-400">
+                      <Download size={48} className="mx-auto mb-4 opacity-20" />
+                      <p className="text-sm font-medium">Sélectionnez un document</p>
+                    </div>
+                  )}
+               </div>
+
+               {/* Right: Intelligence & Actions */}
+               <div className="flex flex-col bg-white">
+                  {activeDoc ? (
+                    <div className="flex-1 flex flex-col">
+                       <div className="p-6 border-b flex justify-between items-center">
+                          <div>
+                            <h3 className="font-bold text-slate-900">Intelligence Documentaire</h3>
+                            <p className="text-xs text-slate-400">Status: <span className="text-blue-600 font-bold">{activeDoc.status}</span></p>
+                          </div>
+                          {hasConsent ? (
+                            <div className="flex items-center gap-1 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 px-2 py-1 rounded">
+                               <ShieldCheck size={12} /> Consent OK
+                            </div>
+                          ) : (
+                            <button onClick={grantConsent} className="text-amber-600 text-[10px] font-bold uppercase bg-amber-50 px-2 py-1 rounded hover:bg-amber-100">
+                               Consentement Requis
+                            </button>
+                          )}
+                       </div>
+
+                       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                          {/* OCR Section */}
+                          <div className="space-y-3">
+                             <div className="flex justify-between items-center">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Texte OCR (Brut)</h4>
+                                {canModify && !ocrResults[activeDoc.id] && hasConsent && (
+                                   <button 
+                                    onClick={() => runOCR(activeDoc.id)}
+                                    disabled={ocrProcessing === activeDoc.id}
+                                    className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                                   >
+                                      {ocrProcessing === activeDoc.id ? "Traitement..." : "Lancer l'OCR local"}
+                                   </button>
+                                )}
+                             </div>
+                             {ocrResults[activeDoc.id] ? (
+                               <div className="group relative">
+                                  <div className="bg-slate-50 border rounded-xl p-4 text-[11px] text-slate-600 italic leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap">
+                                    {ocrResults[activeDoc.id].extracted_text}
+                                  </div>
+                                  {!ocrResults[activeDoc.id].is_reviewed && canReview && (
+                                     <button 
+                                      onClick={() => reviewOCR(ocrResults[activeDoc.id].id)}
+                                      className="mt-2 w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                                     >
+                                        Valider la lecture OCR
+                                     </button>
+                                  )}
+                               </div>
+                             ) : (
+                               <div className="bg-slate-50 border border-dashed rounded-xl p-8 text-center text-slate-400 text-xs italic">
+                                  {hasConsent ? "L'OCR local permet de lire le texte sur votre machine." : "Consentement requis."}
+                                </div>
+                             )}
+                          </div>
+
+                          {/* Extraction Section */}
+                          <div className="space-y-3 pt-6 border-t">
+                             <div className="flex justify-between items-center">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Données Structurées</h4>
+                                {canReview && ocrResults[activeDoc.id]?.is_reviewed && !extractions[activeDoc.id] && (
+                                   <button 
+                                    onClick={() => extractFromOCR(activeDoc.id)}
+                                    disabled={extracting === activeDoc.id}
+                                    className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                                   >
+                                      {extracting === activeDoc.id ? "Extraction..." : "Générer les champs"}
+                                   </button>
+                                )}
+                             </div>
+                             {extractions[activeDoc.id] ? (
+                               <div className="space-y-4">
+                                  <div className="bg-indigo-50/30 border border-indigo-100 rounded-xl p-4 space-y-3">
+                                     <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Type de Document</p>
+                                          <p className="text-xs font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).document_type}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Institution</p>
+                                          <p className="text-xs font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).institution}</p>
+                                        </div>
+                                     </div>
+                                     <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Dates détectées</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {JSON.parse(extractions[activeDoc.id].raw_json).important_dates?.map((d: string) => (
+                                            <span key={d} className="px-1.5 py-0.5 bg-white border rounded text-[10px] font-mono text-indigo-600">{d}</span>
+                                          ))}
+                                        </div>
+                                     </div>
+                                  </div>
+                                  {!extractions[activeDoc.id].is_verified && canReview && (
+                                     <button 
+                                      onClick={() => approveExtraction(extractions[activeDoc.id].id)}
+                                      className="w-full py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                                     >
+                                        Approuver l'analyse structurée
+                                     </button>
+                                  )}
+                               </div>
+                             ) : (
+                               <div className="bg-slate-50 border border-dashed rounded-xl p-8 text-center text-slate-400 text-xs italic">
+                                  {ocrResults[activeDoc.id]?.is_reviewed ? "Prêt pour l'extraction structurée." : "Attente de validation OCR."}
+                               </div>
+                             )}
+                          </div>
+                       </div>
+
+                       <div className="p-4 bg-slate-50 border-t text-center">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                             {extractions[activeDoc.id] ? JSON.parse(extractions[activeDoc.id].raw_json).disclaimer : "Espace de revue sécurisé"}
+                          </p>
+                       </div>
+                    </div>
+                  ) : null}
+               </div>
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineItem({ icon: Icon, label, date, status, active }: any) {
+  const isCompleted = status === 'completed';
+  return (
+    <div className={`flex items-start gap-4 transition-all ${active ? "opacity-100" : "opacity-30"}`}>
+      <div className={`z-10 w-6 h-6 rounded-full flex items-center justify-center border-2 ${
+        isCompleted ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-200 text-slate-300"
+      }`}>
+        <Icon size={12} strokeWidth={3} />
+      </div>
+      <div>
+        <h4 className={`text-xs font-bold ${active ? "text-slate-900" : "text-slate-400"}`}>{label}</h4>
+        {date && <p className="text-[10px] text-slate-400 font-medium">{date}</p>}
       </div>
     </div>
   );
