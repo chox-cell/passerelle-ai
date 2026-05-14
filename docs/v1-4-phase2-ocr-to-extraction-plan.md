@@ -3,12 +3,12 @@
 ## Introduction
 Ce document détaille le plan pour transformer le texte brut extrait localement par l'OCR en données structurées exploitables (dates, type de document, institution) sans dépendre du cloud.
 
-## Pipeline Opérationnel
+## Pipeline Opérationnel (VÉRIFIÉ V1.4-2A)
 1. **Upload** : Import du document (PDF/Image).
 2. **OCR Local** : Extraction du texte brut via Tesseract.
-3. **Revue OCR (Mandatoire)** : Le bénévole/relecteur valide que le texte extrait est fidèle à l'image.
-4. **Extraction Déterministe** : Analyse du texte validé par un moteur de règles local.
-5. **Revue d'Extraction** : Validation humaine des champs extraits (Dates, Type).
+3. **Revue OCR (Mandatoire)** : Le bénévole/relecteur valide que le texte extrait est fidèle à l'image. (VÉRIFIÉ)
+4. **Extraction Déterministe** : Analyse du texte validé par un moteur de règles local (Regex/Mots-clés). (VÉRIFIÉ)
+5. **Revue d'Extraction** : Validation humaine des champs extraits. (VÉRIFIÉ)
 6. **Exploitation** : Utilisation des données pour les synthèses Copilot et les rapports PDF.
 
 ## Règles de Sécurité & Confidentialité

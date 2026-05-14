@@ -57,8 +57,8 @@ def extract_structured_data_from_text(text: str) -> dict:
     actions = "Vérifier les dates d'échéance et les prochaines étapes auprès de votre conseiller."
     
     if "oqtf" in text_lower:
-        actions = "URGENT : Un recours doit être déposé rapidement (souvent sous 48h, 15j ou 30j). Consultez un avocat immédiatement."
-        summary += " ATTENTION : Ce document semble être une mesure d'éloignement."
+        actions = "URGENCE POTENTIELLE : Ce document pourrait être une mesure d'éloignement. Consultez immédiatement un avocat ou une association spécialisée pour vérifier les délais de recours."
+        summary += " ATTENTION : Détection potentielle d'une mesure d'éloignement."
 
     # 6. Overall Confidence
     overall_confidence = (type_confidence + inst_confidence) / 2
@@ -73,7 +73,7 @@ def extract_structured_data_from_text(text: str) -> dict:
         "required_actions": actions,
         "summary_fr": summary,
         "confidence_score": round(max(0.1, overall_confidence), 2),
-        "uncertainty_notes": "Extraction basée sur des mots-clés locaux. La lecture des dates peut être incomplète.",
+        "uncertainty_notes": "Extraction automatisée locale basée sur des mots-clés. Des erreurs sont possibles. Ce résultat n'a aucune valeur juridique.",
         "source": "reviewed_ocr",
-        "disclaimer": "Information à vérifier avec un professionnel qualifié ou une association spécialisée."
+        "disclaimer": "Information à vérifier avec un professionnel qualifié. Cette analyse ne remplace pas un conseil juridique."
     }

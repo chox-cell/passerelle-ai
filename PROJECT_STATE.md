@@ -1,12 +1,13 @@
 # Passerelle AI — Project State
 
 ## Current Status
-**V1.4 OCR Offline (Phase 2A Implémentée)**. L'extraction structurée déterministe à partir du texte OCR validé est opérationnelle.
+**V1.4 OCR Offline (Phase 2A VÉRIFIÉ & DURCI)**. L'extraction structurée déterministe est opérationnelle, sécurisée par RBAC et conforme aux principes de sécurité juridique.
 
 ## Finished (V1.4 - Phase 2A)
 - ✅ **Moteur d'Extraction Local** : Détection par mots-clés et Regex (Local-first).
-- ✅ **Pipeline OCR-to-Extraction** : Liaison sécurisée entre le texte validé et les données structurées.
-- ✅ **Interface de Revue** : Visualisation et validation des champs (Type, Institution, Dates).
+- ✅ **Sécurité Juridique** : Hardening des messages d'alerte (OQTF) et disclaimers.
+- ✅ **RBAC & Isolation** : Protection des endpoints d'extraction et revue.
+- ✅ **Rapport de Vérification** : V1.4 Phase 2A validé.
 
 ## Next Phase (V1.4 - Phase 2B)
 - **Règles Avancées** : Amélioration de la détection des délais légaux par type de document.
