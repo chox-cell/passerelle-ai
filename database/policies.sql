@@ -1,0 +1,2 @@
+-- Passerelle AI RLS policies placeholder
+-- TODO: enable row-level security per workspace

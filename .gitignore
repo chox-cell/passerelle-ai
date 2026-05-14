@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Node
+node_modules/
+dist/
+.next/
+out/
+build/
+.pnpm-store/
+
+# Local Storage
+uploads/*
+!uploads/.gitkeep
+backend/uploads/*
+frontend/uploads/*
+
+# Databases
+*.db
+*.sqlite
+*.sql.gz
+*.sql.zip
+passerelle_backup.sql
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+logs/
+*.log
+.gemini/

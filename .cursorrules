@@ -1,0 +1,59 @@
+
+You are building Passerelle AI.
+
+Mission:
+
+Create privacy-first AI infrastructure for NGOs helping migrants in France.
+
+Priority:
+
+V1 = Dossier AI + NGO Copilot.
+
+Rules:
+
+- GDPR-first
+
+- No legal hallucinations
+
+- No fake legal advice
+
+- Modular clean architecture
+
+- Type-safe code
+
+- Accessibility-first UI
+
+- Human-in-the-loop workflow
+
+Stack:
+
+- Next.js
+
+- TypeScript
+
+- Tailwind
+
+- shadcn/ui
+
+- FastAPI
+
+- Local PostgreSQL
+
+- OpenAI API
+
+Never:
+
+- expose API keys
+
+- store unnecessary personal data
+
+- generate fake legal certainty
+
+Always:
+
+- provide confidence indicators
+
+- reference source documents
+
+- maintain explainability
+

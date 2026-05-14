@@ -1,0 +1,17 @@
+
+Generate a structured French summary for NGO case follow-up.
+
+Sections:
+
+1. Situation générale
+
+2. Documents reçus
+
+3. Dates importantes
+
+4. Points d'attention
+
+5. Actions recommandées
+
+6. Informations à vérifier
+

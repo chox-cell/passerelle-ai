@@ -1,0 +1,148 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from typing import List, Optional
+import uuid
+import json
+from datetime import datetime
+from ..database import get_session
+from ..models import Document, ExtractionResult, Case, AuditLog
+from .privacy import verify_consent
+
+from pydantic import BaseModel
+
+router = APIRouter()
+
+# Request model for review
+class ExtractionReviewRequest(BaseModel):
+    is_verified: bool
+    verified_by: Optional[uuid.UUID] = None
+    corrections: Optional[dict] = None
+
+def format_extraction(extraction: ExtractionResult) -> dict:
+    """Helper to ensure proper serialization and JSON parsing"""
+    try:
+        parsed_json = json.loads(extraction.raw_json)
+    except:
+        parsed_json = extraction.raw_json
+        
+    return {
+        "id": str(extraction.id),
+        "document_id": str(extraction.document_id),
+        "raw_json": parsed_json,
+        "confidence_score": extraction.confidence_score,
+        "is_verified": extraction.is_verified,
+        "verified_by": str(extraction.verified_by) if extraction.verified_by else None,
+        "created_at": extraction.created_at.isoformat()
+    }
+
+@router.post("/documents/{document_id}/mock-extract")
+async def mock_extract(document_id: uuid.UUID, session: Session = Depends(get_session)):
+    # 1. Validate document exists
+    doc = session.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document non trouvé")
+
+    # 2. Verify Consent
+    verify_consent(doc.case_id, "ai_extraction", session)
+
+    # 3. Create realistic mock data
+    mock_data = {
+        "document_type": "Titre de Séjour (Récépissé)",
+        "institution": "Préfecture de Police de Paris",
+        "important_dates": ["2026-05-13", "2026-08-12"],
+        "possible_deadline": "2026-08-12",
+        "required_actions": "Renouvellement à prévoir 2 mois avant l'échéance.",
+        "summary_fr": "Récépissé de demande de renouvellement de titre de séjour. Autorise le travail.",
+        "confidence_score": 0.95,
+        "uncertainty_notes": "Le numéro de dossier est partiellement illisible sur le bord droit.",
+        "disclaimer": "Information à vérifier avec un professionnel qualifié ou une association spécialisée."
+    }
+
+    # 4. Save ExtractionResult
+    extraction = ExtractionResult(
+        document_id=document_id,
+        raw_json=json.dumps(mock_data),
+        confidence_score=0.95,
+        is_verified=False
+    )
+    session.add(extraction)
+
+    # 5. Audit Log
+    case = session.get(Case, doc.case_id)
+    audit = AuditLog(
+        workspace_id=case.workspace_id if case else None,
+        action="EXTRACTION_MOCK_GENERATED",
+        resource_type="extraction",
+        resource_id=extraction.id,
+        details=f"Mock extraction générée pour {doc.file_name}"
+    )
+    session.add(audit)
+
+    # 6. Set status
+    doc.status = "human_review_required"
+    session.add(doc)
+
+    session.commit()
+    session.refresh(extraction)
+    
+    return format_extraction(extraction)
+
+@router.get("/documents/{document_id}/extraction")
+async def get_extraction(document_id: uuid.UUID, session: Session = Depends(get_session)):
+    statement = select(ExtractionResult).where(ExtractionResult.document_id == document_id).order_by(ExtractionResult.created_at.desc())
+    extraction = session.exec(statement).first()
+    
+    if not extraction:
+        raise HTTPException(status_code=404, detail="Aucune extraction trouvée pour ce document")
+
+    # Audit Log
+    doc = session.get(Document, document_id)
+    case = session.get(Case, doc.case_id) if doc else None
+    audit = AuditLog(
+        workspace_id=case.workspace_id if case else None,
+        action="EXTRACTION_VIEWED",
+        resource_type="extraction",
+        resource_id=extraction.id
+    )
+    session.add(audit)
+    session.commit()
+
+    return format_extraction(extraction)
+
+@router.patch("/extractions/{extraction_id}/review")
+async def review_extraction(
+    extraction_id: uuid.UUID, 
+    review: ExtractionReviewRequest,
+    session: Session = Depends(get_session)
+):
+    extraction = session.get(ExtractionResult, extraction_id)
+    if not extraction:
+        raise HTTPException(status_code=404, detail="Extraction non trouvée")
+
+    # Update data
+    extraction.is_verified = review.is_verified
+    extraction.verified_by = review.verified_by
+    
+    if review.corrections:
+        extraction.raw_json = json.dumps(review.corrections)
+    
+    # Update document status if approved
+    if review.is_verified:
+        doc = session.get(Document, extraction.document_id)
+        if doc:
+            doc.status = "approved"
+            session.add(doc)
+
+    # Audit Log
+    audit = AuditLog(
+        action="EXTRACTION_REVIEWED",
+        resource_type="extraction",
+        resource_id=extraction.id,
+        details=f"Vérifié: {review.is_verified}"
+    )
+    session.add(audit)
+
+    session.commit()
+    session.refresh(extraction)
+    
+    return format_extraction(extraction)
