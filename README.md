@@ -3,66 +3,84 @@
 Infrastructure opérationnelle pour les ONG aidant les migrants en France. 
 **Local-first, Privacy-first, French-first.**
 
-## Prérequis
-- **Python 3.12+**
-- **Node.js 18+**
-- **PostgreSQL 15+**
+![Status](https://img.shields.io/badge/Status-V1--Demo--Ready-emerald?style=for-the-badge)
+![License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)
 
-## Installation Rapide (Demo)
+## 🎯 Qui est ce pour ?
+Passerelle AI est conçu pour les associations, les ONG et les travailleurs sociaux qui accompagnent les usagers dans leurs démarches administratives et juridiques complexes. Notre priorité est de protéger les données sensibles tout en automatisant les tâches répétitives.
 
-### 1. Configuration Backend
-```bash
-cd backend
-pip install -r requirements.txt
-cp .env.example .env
+## 🛡️ Pourquoi le "Local-First" ?
+La plupart des outils modernes envoient vos données dans le cloud. Pour une ONG traitant des données de migrants, cela pose des risques de sécurité et de souveraineté.
+- **Confidentialité Totale**: Vos données ne quittent jamais votre machine.
+- **Résilience**: Fonctionne sans internet.
+- **Contrôle**: Vous êtes le seul propriétaire de la base de données.
+
+## 🏗️ Architecture du Système
+
+```mermaid
+graph TD
+    subgraph Client
+        UI[Next.js 14 Dashboard]
+    end
+    subgraph Backend
+        API[FastAPI Router]
+        PDF[ReportLab Generator]
+    end
+    subgraph Storage
+        DB[(Local PostgreSQL)]
+        DISK[[Local FS /uploads]]
+    end
+
+    UI <--> API
+    API <--> DB
+    API <--> DISK
+    API --> PDF
 ```
 
-### 2. Initialisation Base de Données
-Assurez-vous que PostgreSQL est lancé, puis :
-```bash
-createdb passerelle
+## 🔄 Workflow Opérationnel
+
+```mermaid
+sequenceDiagram
+    participant B as Bénévole
+    participant S as Système
+    participant D as Disque Local
+
+    B->>S: Créer Dossier Usager
+    B->>S: Enregistrer Consentement RGPD
+    B->>S: Télécharger Document (PDF/Image)
+    S->>D: Stockage Isolé & Chiffré (V2)
+    B->>S: Lancer Extraction AI (Simulée V1)
+    B->>S: Revue & Validation Humaine
+    S->>S: NGO Copilot (Synthèse & Tâches)
+    B->>S: Générer Rapport PDF Consolidé
 ```
 
-### 3. Reset & Seed Demo (Recommandé)
-Cette commande réinitialise la base de données locale et injecte un dossier de démonstration complet.
+## 🚀 Lancement Rapide (Demo)
+
+### Initialisation
 ```bash
+# Réinitialise la base et injecte les données de démo
 ./scripts/demo_reset.sh
 ```
 
-### 4. Lancement
+### Démarrage
 **Backend:**
 ```bash
-cd backend
-python main.py
+cd backend && python main.py
 ```
 
 **Frontend:**
 ```bash
-cd frontend
-npm install
-npm run dev
+cd frontend && npm run dev
 ```
+*Accès : http://localhost:3000*
 
-## Fonctionnalités V1
-- ✅ Gestion des dossiers migrants (CRUD)
-- ✅ Import sécurisé de documents (Local Storage)
-- ✅ Validation d'intégrité (SHA-256 / MIME Magic)
-- ✅ Workflow Human-in-the-loop (Revue d'extraction)
-- ✅ Consentement RGPD explicite
-- ✅ NGO Copilot : Synthèse et Tâches (Mock)
-- ✅ Export de rapports PDF consolidés
-- ✅ Audit Log complet et Droit à l'oubli (Nuclear Delete)
-
-## Sécurité & Confidentialité
-- **Zéro Cloud**: Toutes les données restent sur votre machine.
-- **Zéro AI Externe**: Dans cette version V1, aucune donnée n'est envoyée à OpenAI ou des tiers.
-- **Souveraineté**: Vous avez le contrôle total sur la suppression des données.
-
-## Limitations Connues
-- Authentification non implémentée (V1.5+)
-- Multi-ténacité logique mais non isolée
-- Extraction AI simulée (Mock) pour validation opérationnelle
-- Pas de RAG légal (V2.0)
+## 📚 Documentation
+- [Release Notes V1](./RELEASE_NOTES_V1.md)
+- [Script de Démo Français](./DEMO_SCRIPT_FR.md)
+- [ NGO One-Pager](./docs/ngo-onepager-fr.md)
+- [Stack Technique](./docs/technical-stack.md)
+- [Politique de Confidentialité](./docs/gdpr.md)
 
 ---
-*Information à vérifier avec un professionnel qualifié ou une association spécialisée.*
+*Information à vérifier avec un professionnel qualifié ou une association spécialisée. Zéro donnée cloud en V1.*
