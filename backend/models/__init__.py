@@ -7,6 +7,7 @@ from .models import (
     Task,
     AuditLog,
     Consent,
+    Report,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "Task",
     "AuditLog",
     "Consent",
+    "Report",
 ]
