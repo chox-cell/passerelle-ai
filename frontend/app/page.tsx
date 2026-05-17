@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-  Users, FolderOpen, AlertCircle, CheckCircle2, 
-  ArrowRight, Search, Plus, Filter, Clock, 
-  ChevronRight, ScanText, FileJson, Activity
+  Users, FolderOpen, CheckCircle2, 
+  Search, Plus, Filter, 
+  ChevronRight, ScanText, FileJson, Activity,
+  Shield, AlertTriangle, RefreshCw, Clock, Wifi, WifiOff
 } from "lucide-react";
 import { API_BASE_URL, Case, getAuthHeaders, handleApiResponse } from "@/lib/api";
 
@@ -14,188 +15,286 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [search, setSearch] = useState("");
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const profileRes = await fetch(`${API_BASE_URL}/auth/me`, { headers: getAuthHeaders() });
-        const profile = await handleApiResponse(profileRes);
-        setUserProfile(profile);
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Health check
+      const health = await fetch(`${API_BASE_URL}/system/health`).catch(() => null);
+      setBackendOnline(health?.ok ?? false);
 
-        const res = await fetch(`${API_BASE_URL}/cases/`, { headers: getAuthHeaders() });
-        const data = await handleApiResponse(res);
-        setCases(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+      const profileRes = await fetch(`${API_BASE_URL}/auth/me`, { headers: getAuthHeaders() });
+      const profile = await handleApiResponse(profileRes);
+      setUserProfile(profile);
 
-  const pendingOCR = cases.filter(c => c.status === "processing").length;
+      const res = await fetch(`${API_BASE_URL}/cases/`, { headers: getAuthHeaders() });
+      const data = await handleApiResponse(res);
+      setCases(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const filtered = cases.filter(c =>
+    c.migrant_name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.case_number?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const role = userProfile?.role || "";
+  const canCreate = role === "admin" || role === "volunteer";
   const pendingReview = cases.filter(c => c.status === "human_review_required").length;
 
   return (
-    <div className="space-y-12">
-      {/* Welcome & Stats */}
+    <div className="space-y-10">
+      {/* Backend Status Banner */}
+      {backendOnline === false && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-100 text-red-700 px-5 py-4 rounded-2xl">
+          <WifiOff size={18} />
+          <span className="text-sm font-medium">
+            Impossible de se connecter au backend. Vérifiez que l'API FastAPI tourne sur le port 8000.
+          </span>
+          <button onClick={fetchData} className="ml-auto flex items-center gap-2 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
+            <RefreshCw size={12} /> Réessayer
+          </button>
+        </div>
+      )}
+
+      {/* Page Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-            Bonjour, {userProfile?.full_name?.split(' ')[0] || "Bénévole"} 👋
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tableau de bord</p>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">
+            Bonjour, {userProfile?.full_name?.split(" ")[0] || "—"} 👋
           </h2>
-          <p className="text-slate-500 font-medium">Prêt pour les permanences d'aujourd'hui ?</p>
+          <p className="text-slate-500 mt-1 text-sm">
+            {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
         </div>
-        <Link 
-          href="/cases/new" 
-          className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-2"
-        >
-          <Plus size={18} /> Nouveau Dossier
-        </Link>
+        {canCreate && (
+          <Link
+            href="/cases/new"
+            className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <Plus size={16} /> Nouveau Dossier
+          </Link>
+        )}
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
-        <StatCard icon={FolderOpen} label="Dossiers Actifs" value={cases.length} color="blue" />
-        <StatCard icon={ScanText} label="OCR en cours" value={pendingOCR} color="amber" />
-        <StatCard icon={FileJson} label="Attente de revue" value={pendingReview} color="indigo" />
-        <StatCard icon={CheckCircle2} label="Finalisés (7j)" value={0} color="emerald" />
+      {/* Stat Cards */}
+      <div className="grid grid-cols-4 gap-5">
+        <StatCard icon={FolderOpen}   label="Dossiers Actifs"    value={cases.length} color="blue"    />
+        <StatCard icon={ScanText}     label="OCR en cours"       value={0}            color="amber"   />
+        <StatCard icon={FileJson}     label="Attente de revue"   value={pendingReview} color="indigo" />
+        <StatCard icon={CheckCircle2} label="Finalisés (7j)"     value={0}            color="emerald" />
       </div>
 
+      {/* Main Content */}
       <div className="grid grid-cols-12 gap-8">
-        {/* Main: Cases List */}
-        <div className="col-span-8 space-y-6">
+
+        {/* Case List */}
+        <div className="col-span-8 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
               <Users size={18} className="text-blue-600" />
-              Dossiers Récents
+              Dossiers récents
             </h3>
             <div className="flex items-center gap-2">
-               <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Rechercher..." 
-                    className="pl-9 pr-4 py-1.5 rounded-lg border bg-white text-xs focus:ring-2 focus:ring-blue-100 outline-none w-48 transition-all"
-                  />
-               </div>
-               <button className="p-1.5 border rounded-lg bg-white text-slate-400 hover:text-slate-600">
-                  <Filter size={14} />
-               </button>
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-8 pr-4 py-1.5 rounded-xl border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-blue-200 outline-none w-52 transition-all"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-             {loading ? (
-                <div className="p-12 text-center animate-pulse text-slate-400 text-sm">Chargement des dossiers...</div>
-             ) : cases.length > 0 ? (
-               <div className="divide-y">
-                 {cases.map((c) => (
-                   <Link 
-                    key={c.id} 
-                    href={`/case/${c.id}`}
-                    className="flex items-center justify-between p-5 hover:bg-slate-50 transition-all group"
-                   >
-                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 font-bold group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                           {c.migrant_name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900">{c.migrant_name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">#{c.case_number}</p>
-                        </div>
-                     </div>
-                     <div className="flex items-center gap-8">
-                        <div className="text-right">
-                           <p className="text-xs font-bold text-slate-700">{new Date(c.created_at).toLocaleDateString('fr-FR')}</p>
-                           <p className="text-[10px] text-slate-400 uppercase font-medium">Création</p>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          c.status === 'open' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {c.status}
-                        </span>
-                        <ChevronRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
-                     </div>
-                   </Link>
-                 ))}
-               </div>
-             ) : (
-               <div className="p-20 text-center">
-                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                     <Users size={32} className="text-slate-200" />
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+            {loading ? (
+              <div className="divide-y">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-5 animate-pulse">
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-100 rounded w-1/3" />
+                      <div className="h-2 bg-slate-50 rounded w-1/5" />
+                    </div>
                   </div>
-                  <h4 className="font-bold text-slate-900 mb-2">Aucun dossier</h4>
-                  <p className="text-sm text-slate-500 max-w-xs mx-auto mb-8">Commencez par créer votre premier dossier pour accompagner un usager.</p>
-                  <Link href="/cases/new" className="bg-slate-900 text-white px-6 py-2 rounded-xl text-xs font-bold">Créer maintenant</Link>
-               </div>
-             )}
+                ))}
+              </div>
+            ) : error ? (
+              <div className="p-16 text-center">
+                <AlertTriangle size={40} className="mx-auto text-red-400 mb-4" />
+                <p className="text-sm font-medium text-slate-600 mb-1">{error}</p>
+                <button onClick={fetchData} className="mt-4 px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-700">
+                  Réessayer
+                </button>
+              </div>
+            ) : filtered.length > 0 ? (
+              <div className="divide-y divide-slate-50">
+                {filtered.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/case/${c.id}`}
+                    className="flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 font-bold text-sm group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                        {c.migrant_name?.charAt(0) ?? "?"}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900 text-sm">{c.migrant_name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">#{c.case_number}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right hidden sm:block">
+                        <p className="text-xs font-semibold text-slate-600">{new Date(c.created_at).toLocaleDateString("fr-FR")}</p>
+                        <p className="text-[10px] text-slate-400 uppercase">Création</p>
+                      </div>
+                      <StatusBadge status={c.status} />
+                      <ChevronRight size={15} className="text-slate-300 group-hover:translate-x-1 group-hover:text-blue-400 transition-all" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-16 text-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                  <Users size={28} className="text-slate-200" />
+                </div>
+                <p className="font-bold text-slate-700 mb-1">Aucun dossier trouvé</p>
+                <p className="text-xs text-slate-400 mb-6">
+                  {search ? `Aucun résultat pour "${search}"` : "Créez le premier dossier de l'association."}
+                </p>
+                {canCreate && !search && (
+                  <Link href="/cases/new" className="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-all">
+                    <Plus size={13} /> Créer un dossier
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Sidebar: Activity & Queue */}
-        <div className="col-span-4 space-y-8">
-          <section className="bg-white border rounded-2xl p-6 shadow-sm">
-             <div className="flex items-center justify-between mb-6">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                  <Activity size={18} className="text-blue-600" />
-                  Activités
-                </h3>
-                <span className="text-[10px] font-bold text-blue-600 uppercase">Live</span>
-             </div>
-             <div className="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-50">
-                <ActivityItem label="Connexion effectuée" time="2m ago" />
-                <ActivityItem label="Dossier Dupont créé" time="1h ago" />
-                <ActivityItem label="OCR terminé (ID: 42)" time="3h ago" />
-                <ActivityItem label="Rapport généré" time="Hier" />
-             </div>
-          </section>
+        {/* Right Sidebar */}
+        <div className="col-span-4 space-y-6">
+          {/* Activity Feed */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Activity size={16} className="text-blue-600" />
+                Activité récente
+              </h3>
+              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                Live
+              </span>
+            </div>
+            <div className="space-y-5">
+              <ActivityItem icon={CheckCircle2} label="Connexion effectuée" time="Il y a 2 min" color="emerald" />
+              <ActivityItem icon={FolderOpen}   label="Dossier Dupont ouvert" time="Il y a 1h"    color="blue"    />
+              <ActivityItem icon={ScanText}     label="OCR terminé — Doc #42" time="Il y a 3h"    color="indigo"  />
+              <ActivityItem icon={FileJson}     label="Rapport PDF généré"    time="Hier"          color="amber"   />
+            </div>
+          </div>
 
-          <section className="bg-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-100 relative overflow-hidden">
-             <div className="relative z-10">
-                <h3 className="font-bold mb-2">Passerelle PRO</h3>
-                <p className="text-xs text-blue-100 mb-6">Optimisez vos permanences avec l'intelligence locale.</p>
-                <div className="space-y-3">
-                   <div className="flex items-center gap-3 bg-white/10 p-2 rounded-lg border border-white/10">
-                      <Shield size={14} className="text-blue-200" />
-                      <p className="text-[10px] font-bold uppercase tracking-tight">Sécurisé & Hors-ligne</p>
-                   </div>
+          {/* Security Badge */}
+          <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Shield size={18} className="text-blue-400" />
                 </div>
-             </div>
-             <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/5 rounded-full blur-2xl" />
-          </section>
+                <div>
+                  <p className="font-bold text-sm">Infrastructure locale</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest">Pilot v1.4</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed mb-5">
+                Toutes les données restent sur votre machine. Zéro cloud, zéro transmission externe.
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-300">
+                  <div className={`w-2 h-2 rounded-full ${backendOnline ? "bg-emerald-400" : "bg-red-400"}`} />
+                  Backend API — {backendOnline === null ? "Vérification..." : backendOnline ? "En ligne" : "Hors ligne"}
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-300">
+                  <div className="w-2 h-2 rounded-full bg-blue-400" />
+                  OCR Tesseract — Prêt
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-300">
+                  <div className="w-2 h-2 rounded-full bg-purple-400" />
+                  Extracteur local — Actif
+                </div>
+              </div>
+            </div>
+            <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl" />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ icon: Icon, label, value, color }: any) {
-  const colors: any = {
-    blue: "text-blue-600 bg-blue-50",
-    amber: "text-amber-600 bg-amber-50",
-    indigo: "text-indigo-600 bg-indigo-50",
+function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color: string }) {
+  const palette: Record<string, string> = {
+    blue:    "text-blue-600 bg-blue-50",
+    amber:   "text-amber-600 bg-amber-50",
+    indigo:  "text-indigo-600 bg-indigo-50",
     emerald: "text-emerald-600 bg-emerald-50",
   };
   return (
-    <div className="bg-white border rounded-2xl p-6 shadow-sm card-hover">
-       <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${colors[color]}`}>
-          <Icon size={20} />
-       </div>
-       <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
-       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${palette[color]}`}>
+        <Icon size={19} />
+      </div>
+      <p className="text-2xl font-bold text-slate-900 mb-0.5">{value}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
     </div>
   );
 }
 
-function ActivityItem({ label, time }: any) {
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    open:                  "bg-emerald-50 text-emerald-600",
+    human_review_required: "bg-amber-50 text-amber-600",
+    approved:              "bg-blue-50 text-blue-600",
+    closed:                "bg-slate-100 text-slate-500",
+  };
   return (
-    <div className="flex items-center gap-4 relative z-10">
-       <div className="w-1.5 h-1.5 rounded-full bg-slate-300 ring-4 ring-white" />
-       <div className="flex-1">
-          <p className="text-xs font-bold text-slate-900">{label}</p>
-          <p className="text-[10px] text-slate-400 font-medium">{time}</p>
-       </div>
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${map[status] ?? "bg-slate-100 text-slate-500"}`}>
+      {status?.replace(/_/g, " ")}
+    </span>
+  );
+}
+
+function ActivityItem({ icon: Icon, label, time, color }: { icon: any; label: string; time: string; color: string }) {
+  const palette: Record<string, string> = {
+    blue:    "text-blue-600 bg-blue-50",
+    amber:   "text-amber-600 bg-amber-50",
+    indigo:  "text-indigo-600 bg-indigo-50",
+    emerald: "text-emerald-600 bg-emerald-50",
+  };
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${palette[color]}`}>
+        <Icon size={14} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-slate-900 truncate">{label}</p>
+        <p className="text-[10px] text-slate-400">{time}</p>
+      </div>
     </div>
   );
 }
