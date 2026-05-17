@@ -20,7 +20,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         style={{ marginLeft: sidebarWidth }}
       >
         {/* Top bar */}
-        <header className="h-16 border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40 flex items-center px-8 justify-between">
+        <header className="h-16 border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40 flex items-center px-8 justify-between shrink-0">
           <nav className="flex items-center gap-2 text-sm text-slate-400">
             <span className="font-medium">Passerelle</span>
             <span>/</span>
@@ -32,8 +32,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
+        {/* Demo Mode Banner */}
+        <div className="bg-amber-100 border-b border-amber-200 text-amber-800 px-4 py-2 text-center text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 shrink-0">
+          <span className="animate-pulse">⚠️</span>
+          Mode démonstration local — n'utilisez pas de données réelles sans consentement écrit.
+        </div>
+
         {/* Page */}
-        <main className="flex-1 p-8 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-4 md:p-8 max-w-[1600px] w-full mx-auto">
           {children}
         </main>
 

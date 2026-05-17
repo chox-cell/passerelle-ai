@@ -157,55 +157,86 @@ export default function CaseDetail() {
   );
 
   return (
-    <div className="max-w-[1600px] mx-auto">
+    <div className="max-w-[1600px] mx-auto space-y-6">
       {/* Header Info */}
-      <div className="mb-8 flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-200 pb-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{caseData?.migrant_name}</h1>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest border border-slate-200">
               Dossier #{id.toString().slice(0, 8)}
             </span>
           </div>
-          <div className="flex gap-6 items-center">
+          <div className="flex flex-wrap gap-6 items-center">
              <div className="flex items-center gap-2 text-slate-500 text-sm">
                <Clock size={14} />
                <span>Ouvert le {new Date(caseData?.created_at || "").toLocaleDateString('fr-FR')}</span>
              </div>
              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${caseData?.status === 'open' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                <span className="text-sm font-semibold text-slate-700 capitalize">{caseData?.status || 'Inconnu'}</span>
+                <div className={`w-2 h-2 rounded-full ${caseData?.status === 'open' ? 'bg-emerald-500' : caseData?.status === 'human_review_required' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                <span className="text-sm font-semibold text-slate-700 capitalize">{caseData?.status?.replace(/_/g, " ") || 'Inconnu'}</span>
              </div>
           </div>
         </div>
         <div className="flex gap-3">
           {isAdmin && (
-             <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all">
+             <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-200">
                <Trash2 size={16} /> Supprimer le dossier
              </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Timeline & Summary */}
-        <div className="col-span-3 space-y-8">
-          <section className="bg-white rounded-2xl border shadow-sm p-6 overflow-hidden relative">
+        <div className="col-span-1 lg:col-span-3 space-y-8">
+          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden relative">
             <div className="flex items-center gap-2 mb-6 text-slate-900">
                <History size={18} className="text-blue-600" />
-               <h2 className="font-bold">Timeline du Dossier</h2>
+               <h2 className="font-bold">Progression du Dossier</h2>
             </div>
             
-            <div className="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-              <TimelineItem active icon={ShieldCheck} label="Consentement validé" date="Aujourd'hui" status="completed" />
-              <TimelineItem active={documents.length > 0} icon={Download} label="Documents importés" date={documents.length > 0 ? "Aujourd'hui" : "--"} status={documents.length > 0 ? "completed" : "pending"} />
-              <TimelineItem active={Object.keys(ocrResults).length > 0} icon={ScanText} label="Extraction OCR" status={Object.keys(ocrResults).length > 0 ? "completed" : "pending"} />
-              <TimelineItem active={Object.keys(extractions).length > 0} icon={FileJson} label="Analyse structurée" status={Object.keys(extractions).length > 0 ? "completed" : "pending"} />
-              <TimelineItem active={caseData?.status === 'approved'} icon={CheckCircle2} label="Approbation finale" status="pending" />
+            <div className="space-y-0 relative before:absolute before:left-[15px] before:top-4 before:bottom-4 before:w-[2px] before:bg-slate-100">
+              <TimelineItem 
+                active={true} 
+                icon={ShieldCheck} 
+                label="Consentement" 
+                status="completed" 
+                current={!hasConsent} 
+              />
+              <TimelineItem 
+                active={hasConsent} 
+                icon={Download} 
+                label="Import documents" 
+                status={documents.length > 0 ? "completed" : "pending"} 
+                current={hasConsent && documents.length === 0} 
+              />
+              <TimelineItem 
+                active={documents.length > 0} 
+                icon={ScanText} 
+                label="Extraction OCR" 
+                status={Object.keys(ocrResults).length > 0 ? "completed" : "pending"} 
+                current={documents.length > 0 && Object.keys(ocrResults).length === 0} 
+              />
+              <TimelineItem 
+                active={Object.keys(ocrResults).some(k => ocrResults[k].is_reviewed)} 
+                icon={FileJson} 
+                label="Analyse structurée" 
+                status={Object.keys(extractions).length > 0 ? "completed" : "pending"} 
+                current={Object.keys(ocrResults).some(k => ocrResults[k].is_reviewed) && Object.keys(extractions).length === 0} 
+              />
+              <TimelineItem 
+                active={Object.keys(extractions).length > 0} 
+                icon={CheckCircle2} 
+                label="Revue finale" 
+                status={caseData?.status === 'approved' ? "completed" : "pending"} 
+                current={Object.keys(extractions).length > 0 && caseData?.status !== 'approved'} 
+                isLast
+              />
             </div>
           </section>
 
-          <section className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl shadow-slate-200">
+          <section className="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800">
              <div className="flex items-center gap-2 mb-4">
                 <Brain className="text-blue-400" size={20} />
                 <h3 className="font-bold text-sm uppercase tracking-wider">Résumé Pilot</h3>
@@ -213,186 +244,230 @@ export default function CaseDetail() {
              <p className="text-slate-300 text-sm leading-relaxed mb-6 italic">
                "{caseData?.summary || "Aucun résumé généré pour le moment."}"
              </p>
-             <Link href={`/case/${id}/copilot`} className="block w-full text-center bg-white/10 hover:bg-white/20 py-2 rounded-xl text-xs font-bold transition-all">
-                Ouvrir NGO Copilot
-             </Link>
           </section>
         </div>
 
         {/* Right: Split-View Workspace */}
-        <div className="col-span-9 space-y-8">
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden min-h-[700px] flex flex-col">
+        <div className="col-span-1 lg:col-span-9 space-y-8">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[700px]">
             {/* Workspace Header */}
-            <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
-               <div className="flex gap-4">
+            <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-4">
+               <div className="flex flex-wrap gap-2">
                  {documents.map(doc => (
                    <button 
                      key={doc.id}
                      onClick={() => setActiveDoc(doc)}
-                     className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
                        activeDoc?.id === doc.id 
-                         ? "bg-white border-blue-200 text-blue-600 shadow-sm" 
-                         : "bg-transparent border-transparent text-slate-400 hover:text-slate-600"
+                         ? "bg-white border-blue-200 text-blue-700 shadow-sm" 
+                         : "bg-transparent border-transparent text-slate-500 hover:bg-slate-200"
                      }`}
                    >
                      {doc.file_name}
                    </button>
                  ))}
-                 {canModify && (
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
-                    >
-                      +
-                    </button>
-                 )}
+                 
+                 <button 
+                   onClick={() => canModify ? fileInputRef.current?.click() : alert("Seuls les admins/bénévoles peuvent ajouter un document.")}
+                   className={`w-10 h-9 flex items-center justify-center rounded-lg border border-dashed transition-all ${
+                     canModify 
+                       ? "border-slate-300 text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50" 
+                       : "border-slate-200 text-slate-300 cursor-not-allowed"
+                   }`}
+                   title={canModify ? "Ajouter un document" : "Permissions insuffisantes"}
+                 >
+                   <PlusIcon />
+                 </button>
                  <input type="file" ref={fileInputRef} className="hidden" />
                </div>
                <div className="flex items-center gap-2">
-                 <span className="text-[10px] text-slate-400 font-bold uppercase mr-2">Mode:</span>
-                 <button className="flex items-center gap-2 px-3 py-1 bg-white border rounded-lg text-[10px] font-bold text-slate-600 shadow-sm">
-                    <Split size={12} /> Split View
+                 <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Vue :</span>
+                 <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm pointer-events-none">
+                    <Split size={14} /> Côte à côte
                  </button>
                </div>
             </div>
 
             {/* Workspace Content */}
-            <div className="flex-1 grid grid-cols-2">
+            <div className="flex-1 flex flex-col md:flex-row">
                {/* Left: Preview */}
-               <div className="border-r bg-slate-50/50 flex flex-col items-center justify-center p-8 relative">
+               <div className="w-full md:w-1/2 border-r border-slate-200 bg-slate-100 flex flex-col items-center justify-center p-6 md:p-8">
                   {activeDoc ? (
-                    <div className="w-full h-full bg-white border rounded-xl shadow-2xl overflow-hidden flex flex-col">
-                       <div className="p-3 border-b flex justify-between items-center bg-slate-50">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">{activeDoc.file_name}</span>
-                          <ExternalLink size={12} className="text-slate-400" />
+                    <div className="w-full h-full max-h-[600px] bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden flex flex-col">
+                       <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase truncate pr-4">{activeDoc.file_name}</span>
+                          <ExternalLink size={14} className="text-slate-400 shrink-0" />
                        </div>
-                       <div className="flex-1 flex items-center justify-center text-slate-300">
-                          <span className="text-5xl">📄</span>
-                       </div>
-                       <div className="p-4 border-t bg-slate-50 text-center">
-                          <p className="text-[10px] text-slate-400 font-medium">Prévisualisation locale sécurisée</p>
+                       <div className="flex-1 flex items-center justify-center text-slate-300 bg-slate-50/50">
+                          <span className="text-6xl opacity-50">📄</span>
                        </div>
                     </div>
                   ) : (
                     <div className="text-center text-slate-400">
-                      <Download size={48} className="mx-auto mb-4 opacity-20" />
-                      <p className="text-sm font-medium">Sélectionnez un document</p>
+                      <Download size={48} className="mx-auto mb-4 opacity-30" />
+                      <p className="text-sm font-medium">Sélectionnez ou importez un document</p>
                     </div>
                   )}
                </div>
 
                {/* Right: Intelligence & Actions */}
-               <div className="flex flex-col bg-white">
+               <div className="w-full md:w-1/2 flex flex-col bg-white">
                   {activeDoc ? (
                     <div className="flex-1 flex flex-col">
-                       <div className="p-6 border-b flex justify-between items-center">
+                       <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
                           <div>
                             <h3 className="font-bold text-slate-900">Intelligence Documentaire</h3>
-                            <p className="text-xs text-slate-400">Status: <span className="text-blue-600 font-bold">{activeDoc.status}</span></p>
+                            <p className="text-[11px] text-slate-500 uppercase font-medium tracking-wide mt-0.5">Traitement Local</p>
                           </div>
                           {hasConsent ? (
-                            <div className="flex items-center gap-1 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 px-2 py-1 rounded">
-                               <ShieldCheck size={12} /> Consent OK
+                            <div className="flex items-center gap-1.5 text-emerald-700 text-[10px] font-bold uppercase tracking-widest bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-md">
+                               <ShieldCheck size={14} /> Consentement
                             </div>
                           ) : (
-                            <button onClick={grantConsent} className="text-amber-600 text-[10px] font-bold uppercase bg-amber-50 px-2 py-1 rounded hover:bg-amber-100">
+                            <button 
+                              onClick={grantConsent} 
+                              className="text-amber-700 text-[10px] font-bold uppercase tracking-widest bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md hover:bg-amber-100 transition-colors"
+                            >
                                Consentement Requis
                             </button>
                           )}
                        </div>
 
-                       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                       <div className="flex-1 overflow-y-auto p-6 space-y-8">
                           {/* OCR Section */}
-                          <div className="space-y-3">
-                             <div className="flex justify-between items-center">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Texte OCR (Brut)</h4>
-                                {canModify && !ocrResults[activeDoc.id] && hasConsent && (
+                          <div className="space-y-4">
+                             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                  <ScanText size={16} className="text-blue-500" /> Texte OCR
+                                </h4>
+                                {hasConsent && (
                                    <button 
                                     onClick={() => runOCR(activeDoc.id)}
-                                    disabled={ocrProcessing === activeDoc.id}
-                                    className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                                    disabled={ocrProcessing === activeDoc.id || !canModify}
+                                    className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${
+                                      canModify 
+                                        ? "text-blue-600 hover:bg-blue-50" 
+                                        : "text-slate-400 cursor-not-allowed"
+                                    }`}
+                                    title={!canModify ? "Seuls les admins/bénévoles peuvent lancer l'OCR" : ""}
                                    >
                                       {ocrProcessing === activeDoc.id ? "Traitement..." : "Lancer l'OCR local"}
                                    </button>
                                 )}
                              </div>
+                             
                              {ocrResults[activeDoc.id] ? (
                                <div className="group relative">
-                                  <div className="bg-slate-50 border rounded-xl p-4 text-[11px] text-slate-600 italic leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap">
+                                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 italic leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap shadow-inner">
                                     {ocrResults[activeDoc.id].extracted_text}
                                   </div>
-                                  {!ocrResults[activeDoc.id].is_reviewed && canReview && (
+                                  {!ocrResults[activeDoc.id].is_reviewed ? (
                                      <button 
                                       onClick={() => reviewOCR(ocrResults[activeDoc.id].id)}
-                                      className="mt-2 w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                                      disabled={!canReview}
+                                      className={`mt-3 w-full py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                        canReview 
+                                          ? "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200" 
+                                          : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                      }`}
+                                      title={!canReview ? "Seuls les admins/relecteurs peuvent valider" : ""}
                                      >
                                         Valider la lecture OCR
                                      </button>
+                                  ) : (
+                                    <div className="mt-2 flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 px-2 py-1 rounded inline-flex">
+                                      <CheckCircle2 size={12} /> Validé par un humain
+                                    </div>
                                   )}
                                </div>
                              ) : (
-                               <div className="bg-slate-50 border border-dashed rounded-xl p-8 text-center text-slate-400 text-xs italic">
-                                  {hasConsent ? "L'OCR local permet de lire le texte sur votre machine." : "Consentement requis."}
+                               <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-6 text-center text-slate-500 text-xs italic">
+                                  {hasConsent ? "Aucun texte extrait. Lancez l'OCR local." : "Le consentement est requis pour l'OCR."}
                                 </div>
                              )}
                           </div>
 
                           {/* Extraction Section */}
-                          <div className="space-y-3 pt-6 border-t">
-                             <div className="flex justify-between items-center">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Données Structurées</h4>
-                                {canReview && ocrResults[activeDoc.id]?.is_reviewed && !extractions[activeDoc.id] && (
+                          <div className="space-y-4 pt-2">
+                             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                  <FileJson size={16} className="text-indigo-500" /> Données Structurées
+                                </h4>
+                                {ocrResults[activeDoc.id]?.is_reviewed && !extractions[activeDoc.id] && (
                                    <button 
                                     onClick={() => extractFromOCR(activeDoc.id)}
-                                    disabled={extracting === activeDoc.id}
-                                    className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                                    disabled={extracting === activeDoc.id || !canReview}
+                                    className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${
+                                      canReview 
+                                        ? "text-indigo-600 hover:bg-indigo-50" 
+                                        : "text-slate-400 cursor-not-allowed"
+                                    }`}
                                    >
                                       {extracting === activeDoc.id ? "Extraction..." : "Générer les champs"}
                                    </button>
                                 )}
                              </div>
+
                              {extractions[activeDoc.id] ? (
                                <div className="space-y-4">
-                                  <div className="bg-indigo-50/30 border border-indigo-100 rounded-xl p-4 space-y-3">
+                                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-5 space-y-4 shadow-sm">
                                      <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Type de Document</p>
-                                          <p className="text-xs font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).document_type}</p>
+                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Type de Document</p>
+                                          <p className="text-sm font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).document_type || "Non détecté"}</p>
                                         </div>
                                         <div>
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Institution</p>
-                                          <p className="text-xs font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).institution}</p>
+                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Institution</p>
+                                          <p className="text-sm font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).institution || "Non détectée"}</p>
                                         </div>
                                      </div>
-                                     <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Dates détectées</p>
-                                        <div className="flex flex-wrap gap-1">
-                                          {JSON.parse(extractions[activeDoc.id].raw_json).important_dates?.map((d: string) => (
-                                            <span key={d} className="px-1.5 py-0.5 bg-white border rounded text-[10px] font-mono text-indigo-600">{d}</span>
-                                          ))}
+                                     <div className="pt-2 border-t border-indigo-100/50">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Dates détectées</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {JSON.parse(extractions[activeDoc.id].raw_json).important_dates?.length > 0 ? (
+                                            JSON.parse(extractions[activeDoc.id].raw_json).important_dates.map((d: string) => (
+                                              <span key={d} className="px-2 py-1 bg-white border border-indigo-100 rounded-md text-xs font-mono font-medium text-indigo-700 shadow-sm">{d}</span>
+                                            ))
+                                          ) : (
+                                            <span className="text-xs text-slate-500 italic">Aucune date reconnue</span>
+                                          )}
                                         </div>
                                      </div>
                                   </div>
-                                  {!extractions[activeDoc.id].is_verified && canReview && (
+                                  
+                                  {!extractions[activeDoc.id].is_verified ? (
                                      <button 
                                       onClick={() => approveExtraction(extractions[activeDoc.id].id)}
-                                      className="w-full py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                                      disabled={!canReview}
+                                      className={`w-full py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                        canReview 
+                                          ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200" 
+                                          : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                      }`}
                                      >
                                         Approuver l'analyse structurée
                                      </button>
+                                  ) : (
+                                    <div className="mt-2 flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 px-2 py-1 rounded inline-flex">
+                                      <CheckCircle2 size={12} /> Analyse approuvée
+                                    </div>
                                   )}
                                </div>
                              ) : (
-                               <div className="bg-slate-50 border border-dashed rounded-xl p-8 text-center text-slate-400 text-xs italic">
-                                  {ocrResults[activeDoc.id]?.is_reviewed ? "Prêt pour l'extraction structurée." : "Attente de validation OCR."}
+                               <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-6 text-center text-slate-500 text-xs italic">
+                                  {ocrResults[activeDoc.id]?.is_reviewed ? "Prêt pour l'extraction déterministe." : "Attente de validation OCR humaine."}
                                </div>
                              )}
                           </div>
                        </div>
 
-                       <div className="p-4 bg-slate-50 border-t text-center">
-                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                             {extractions[activeDoc.id] ? JSON.parse(extractions[activeDoc.id].raw_json).disclaimer : "Espace de revue sécurisé"}
+                       {/* Mandatory Disclaimer */}
+                       <div className="p-4 bg-amber-50 border-t border-amber-100 flex items-start gap-3">
+                          <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                          <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
+                             {extractions[activeDoc.id] && JSON.parse(extractions[activeDoc.id].raw_json).disclaimer 
+                               ? JSON.parse(extractions[activeDoc.id].raw_json).disclaimer 
+                               : "Rappel : Les informations extraites doivent toujours être vérifiées. Cet outil ne fournit pas de conseil juridique."}
                           </p>
                        </div>
                     </div>
@@ -406,18 +481,27 @@ export default function CaseDetail() {
   );
 }
 
-function TimelineItem({ icon: Icon, label, date, status, active }: any) {
+function PlusIcon() {
+  return <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+}
+
+function TimelineItem({ icon: Icon, label, date, status, active, current, isLast }: any) {
   const isCompleted = status === 'completed';
   return (
-    <div className={`flex items-start gap-4 transition-all ${active ? "opacity-100" : "opacity-30"}`}>
-      <div className={`z-10 w-6 h-6 rounded-full flex items-center justify-center border-2 ${
-        isCompleted ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-200 text-slate-300"
+    <div className={`flex items-start gap-4 py-3 relative ${active ? "opacity-100" : "opacity-40 grayscale"}`}>
+      <div className={`z-10 w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors duration-300 ${
+        isCompleted ? "bg-emerald-500 border-emerald-500 text-white" : 
+        current ? "bg-white border-blue-500 text-blue-500 ring-4 ring-blue-50" : 
+        "bg-white border-slate-300 text-slate-400"
       }`}>
-        <Icon size={12} strokeWidth={3} />
+        <Icon size={14} strokeWidth={isCompleted || current ? 3 : 2} />
       </div>
-      <div>
-        <h4 className={`text-xs font-bold ${active ? "text-slate-900" : "text-slate-400"}`}>{label}</h4>
-        {date && <p className="text-[10px] text-slate-400 font-medium">{date}</p>}
+      <div className="pt-1.5 flex-1">
+        <h4 className={`text-sm font-bold ${current ? "text-blue-700" : isCompleted ? "text-slate-900" : "text-slate-500"}`}>
+          {label}
+        </h4>
+        {date && <p className="text-[11px] text-slate-500 font-medium mt-0.5">{date}</p>}
+        {current && <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mt-1">Étape actuelle</p>}
       </div>
     </div>
   );
