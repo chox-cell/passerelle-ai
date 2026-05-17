@@ -1,13 +1,25 @@
 export const API_BASE_URL = "http://localhost:8000/api/v1";
 
-export const getAuthHeaders = () => {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("token");
-  return {
-    "Authorization": `Bearer ${token}`,
+export function getAuthHeaders(): HeadersInit {
+  if (typeof window === "undefined") {
+    return {
+      "Content-Type": "application/json",
+    };
+  }
+
+  const token = localStorage.getItem("passerelle_token");
+
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
 
 export const handleApiResponse = async (res: Response) => {
   if (res.status === 401) {

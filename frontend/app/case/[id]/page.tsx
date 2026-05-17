@@ -267,7 +267,7 @@ export default function CaseDetail() {
                           <ExternalLink size={12} className="text-slate-400" />
                        </div>
                        <div className="flex-1 flex items-center justify-center text-slate-300">
-                          <FileText size={64} strokeWidth={1} />
+                          <span className="text-5xl">📄</span>
                        </div>
                        <div className="p-4 border-t bg-slate-50 text-center">
                           <p className="text-[10px] text-slate-400 font-medium">Prévisualisation locale sécurisée</p>
