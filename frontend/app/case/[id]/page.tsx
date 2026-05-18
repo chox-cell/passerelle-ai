@@ -1,5 +1,18 @@
 "use client";
 
+function parseExtractionRaw(raw: unknown): any {
+  if (!raw) return {};
+  if (typeof raw === "object") return raw;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -340,24 +353,45 @@ export default function CaseDetail() {
                                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                   <ScanText size={16} className="text-blue-500" /> Texte OCR
                                 </h4>
-                                {hasConsent && (
-                                   <button 
-                                    onClick={() => runOCR(activeDoc.id)}
-                                    disabled={ocrProcessing === activeDoc.id || !canModify}
-                                    className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${
-                                      canModify 
-                                        ? "text-blue-600 hover:bg-blue-50" 
-                                        : "text-slate-400 cursor-not-allowed"
-                                    }`}
-                                    title={!canModify ? "Seuls les admins/bénévoles peuvent lancer l'OCR" : ""}
-                                   >
-                                      {ocrProcessing === activeDoc.id ? "Traitement..." : "Lancer l'OCR local"}
-                                   </button>
-                                )}
+                                <div className="flex items-center gap-2">
+                                   {/* OCR Status Badge */}
+                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                                     activeDoc.ocr_status === "completed" 
+                                       ? "bg-emerald-50 border-emerald-100 text-emerald-700" 
+                                       : activeDoc.ocr_status === "processing" 
+                                       ? "bg-blue-50 border-blue-100 text-blue-700 animate-pulse" 
+                                       : activeDoc.ocr_status === "failed" 
+                                       ? "bg-red-50 border-red-100 text-red-700" 
+                                       : "bg-slate-50 border-slate-200 text-slate-500"
+                                   }`}>
+                                     OCR : {activeDoc.ocr_status === "completed" ? "Terminé" : activeDoc.ocr_status === "processing" ? "En cours" : activeDoc.ocr_status === "failed" ? "Échoué" : "En attente"}
+                                   </span>
+                                   
+                                   {hasConsent && !ocrResults[activeDoc.id] && (
+                                      <button 
+                                       onClick={() => runOCR(activeDoc.id)}
+                                       disabled={ocrProcessing === activeDoc.id || !canModify}
+                                       className={`text-[10px] font-bold px-2 py-1 rounded border transition-colors ${
+                                         canModify 
+                                           ? "border-blue-200 text-blue-600 hover:bg-blue-50" 
+                                           : "border-slate-200 text-slate-400 cursor-not-allowed"
+                                       }`}
+                                       title={!canModify ? "Seuls les admins/bénévoles peuvent lancer l'OCR" : ""}
+                                      >
+                                         {ocrProcessing === activeDoc.id ? "Traitement..." : "Lancer l'OCR local"}
+                                      </button>
+                                   )}
+                                </div>
                              </div>
                              
                              {ocrResults[activeDoc.id] ? (
-                               <div className="group relative">
+                               <div className="group relative space-y-3">
+                                  {!ocrResults[activeDoc.id].is_reviewed && (
+                                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-[11px] font-semibold flex items-center gap-2 shadow-sm">
+                                      <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                                      <span>Revue nécessaire : Veuillez valider la lecture OCR ci-dessous.</span>
+                                    </div>
+                                  )}
                                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 italic leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap shadow-inner">
                                     {ocrResults[activeDoc.id].extracted_text}
                                   </div>
@@ -375,7 +409,7 @@ export default function CaseDetail() {
                                         Valider la lecture OCR
                                      </button>
                                   ) : (
-                                    <div className="mt-2 flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 px-2 py-1 rounded inline-flex">
+                                    <div className="mt-2 flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md inline-flex shadow-sm">
                                       <CheckCircle2 size={12} /> Validé par un humain
                                     </div>
                                   )}
@@ -393,43 +427,73 @@ export default function CaseDetail() {
                                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                   <FileJson size={16} className="text-indigo-500" /> Données Structurées
                                 </h4>
-                                {ocrResults[activeDoc.id]?.is_reviewed && !extractions[activeDoc.id] && (
-                                   <button 
-                                    onClick={() => extractFromOCR(activeDoc.id)}
-                                    disabled={extracting === activeDoc.id || !canReview}
-                                    className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${
-                                      canReview 
-                                        ? "text-indigo-600 hover:bg-indigo-50" 
-                                        : "text-slate-400 cursor-not-allowed"
-                                    }`}
-                                   >
-                                      {extracting === activeDoc.id ? "Extraction..." : "Générer les champs"}
-                                   </button>
-                                )}
+                                <div className="flex items-center gap-2">
+                                  {extractions[activeDoc.id] && (() => {
+                                    const confidence = extractions[activeDoc.id].confidence_score;
+                                    return (
+                                      <>
+                                        <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[9px] font-bold uppercase tracking-wider">
+                                          Source : OCR validé
+                                        </span>
+                                        {confidence !== undefined && (
+                                          <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider ${
+                                            confidence >= 0.8 
+                                              ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                                              : confidence >= 0.5 
+                                              ? "bg-amber-50 border-amber-100 text-amber-700"
+                                              : "bg-red-50 border-red-100 text-red-700"
+                                          }`}>
+                                            Confiance : {Math.round(confidence * 100)}%
+                                          </span>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                  {ocrResults[activeDoc.id]?.is_reviewed && !extractions[activeDoc.id] && (
+                                     <button 
+                                      onClick={() => extractFromOCR(activeDoc.id)}
+                                      disabled={extracting === activeDoc.id || !canReview}
+                                      className={`text-[10px] font-bold px-2 py-1 rounded border transition-colors ${
+                                        canReview 
+                                          ? "border-indigo-200 text-indigo-600 hover:bg-indigo-50" 
+                                          : "border-slate-200 text-slate-400 cursor-not-allowed"
+                                      }`}
+                                     >
+                                        {extracting === activeDoc.id ? "Extraction..." : "Générer les champs"}
+                                     </button>
+                                  )}
+                                </div>
                              </div>
 
                              {extractions[activeDoc.id] ? (
                                <div className="space-y-4">
-                                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-5 space-y-4 shadow-sm">
+                                  {!extractions[activeDoc.id].is_verified && (
+                                    <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-[11px] font-semibold flex items-center gap-2 shadow-sm">
+                                      <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                                      <span>Revue nécessaire : Veuillez valider les informations structurées.</span>
+                                    </div>
+                                  )}
+
+                                  <div className="bg-indigo-50/10 border border-indigo-100 rounded-2xl p-5 space-y-4 shadow-sm">
                                      <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Type de Document</p>
-                                          <p className="text-sm font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).document_type || "Non détecté"}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Type de Document</p>
+                                          <p className="text-sm font-bold text-slate-900">{parseExtractionRaw(extractions[activeDoc.id].raw_json).document_type || "Non détecté"}</p>
                                         </div>
                                         <div>
-                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Institution</p>
-                                          <p className="text-sm font-bold text-slate-900">{JSON.parse(extractions[activeDoc.id].raw_json).institution || "Non détectée"}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Institution</p>
+                                          <p className="text-sm font-bold text-slate-900">{parseExtractionRaw(extractions[activeDoc.id].raw_json).institution || "Non détectée"}</p>
                                         </div>
                                      </div>
-                                     <div className="pt-2 border-t border-indigo-100/50">
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Dates détectées</p>
+                                     <div className="pt-2 border-t border-indigo-100/30">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Dates détectées</p>
                                         <div className="flex flex-wrap gap-2">
-                                          {JSON.parse(extractions[activeDoc.id].raw_json).important_dates?.length > 0 ? (
-                                            JSON.parse(extractions[activeDoc.id].raw_json).important_dates.map((d: string) => (
-                                              <span key={d} className="px-2 py-1 bg-white border border-indigo-100 rounded-md text-xs font-mono font-medium text-indigo-700 shadow-sm">{d}</span>
+                                          {parseExtractionRaw(extractions[activeDoc.id].raw_json).important_dates?.length > 0 ? (
+                                            parseExtractionRaw(extractions[activeDoc.id].raw_json).important_dates.map((d: string) => (
+                                              <span key={d} className="px-2 py-1 bg-white border border-indigo-100 rounded-lg text-xs font-mono font-bold text-indigo-700 shadow-sm">{d}</span>
                                             ))
                                           ) : (
-                                            <span className="text-xs text-slate-500 italic">Aucune date reconnue</span>
+                                            <span className="text-xs text-slate-400 italic">Aucune date reconnue</span>
                                           )}
                                         </div>
                                      </div>
@@ -448,7 +512,7 @@ export default function CaseDetail() {
                                         Approuver l'analyse structurée
                                      </button>
                                   ) : (
-                                    <div className="mt-2 flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 px-2 py-1 rounded inline-flex">
+                                    <div className="mt-2 flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md inline-flex shadow-sm">
                                       <CheckCircle2 size={12} /> Analyse approuvée
                                     </div>
                                   )}
@@ -464,10 +528,10 @@ export default function CaseDetail() {
                        {/* Mandatory Disclaimer */}
                        <div className="p-4 bg-amber-50 border-t border-amber-100 flex items-start gap-3">
                           <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
-                          <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
-                             {extractions[activeDoc.id] && JSON.parse(extractions[activeDoc.id].raw_json).disclaimer 
-                               ? JSON.parse(extractions[activeDoc.id].raw_json).disclaimer 
-                               : "Rappel : Les informations extraites doivent toujours être vérifiées. Cet outil ne fournit pas de conseil juridique."}
+                          <p className="text-[10px] text-amber-800 font-semibold leading-relaxed uppercase tracking-wide">
+                             {extractions[activeDoc.id] && parseExtractionRaw(extractions[activeDoc.id].raw_json).disclaimer 
+                               ? parseExtractionRaw(extractions[activeDoc.id].raw_json).disclaimer 
+                               : "Rappel : Les informations extraites doivent toujours être vérifiées par un professionnel. Cet outil local ne remplace pas un conseil juridique."}
                           </p>
                        </div>
                     </div>
