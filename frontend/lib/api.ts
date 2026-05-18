@@ -1,4 +1,4 @@
-export const API_BASE_URL = "http://localhost:8000/api/v1";
+export const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
 export function getAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") {
@@ -7,7 +7,7 @@ export function getAuthHeaders(): HeadersInit {
     };
   }
 
-  const token = localStorage.getItem("passerelle_token");
+  const token = localStorage.getItem("token");
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -26,7 +26,7 @@ export const handleApiResponse = async (res: Response) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+      window.location.href = "/login?expired=true";
     }
     throw new Error("Session expirée. Veuillez vous reconnecter.");
   }
@@ -54,6 +54,8 @@ export interface Document {
   mime_type?: string;
   file_size?: number;
   checksum?: string;
+  ocr_status?: string;
+  file_type?: string;
 }
 
 export interface OCRResult {
@@ -72,6 +74,7 @@ export interface Extraction {
   document_id: string;
   raw_json: any;
   is_verified: boolean;
+  confidence_score?: number;
 }
 
 export interface Consent {

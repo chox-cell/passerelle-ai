@@ -1,135 +1,117 @@
 "use client";
 
-import { ShieldCheck, ServerOff, Database, Users, AlertTriangle, CheckCircle, XCircle, Info } from "lucide-react";
+import { BookOpen, Shield, HelpCircle, HardDrive, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
 
-export default function Knowledge() {
+export default function KnowledgePage() {
   return (
-    <div className="max-w-4xl mx-auto space-y-12 pb-12">
+    <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Centre de Ressources</p>
-        <h2 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-          Base de connaissances <Database className="text-blue-600" size={28} />
-        </h2>
-        <p className="text-slate-500 mt-1 text-sm">Doctrine d'utilisation et règles de sécurité de Passerelle AI Pilot v1.4.</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Documentation</p>
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+          Base de Connaissances <BookOpen className="text-blue-600" size={28} />
+        </h1>
+        <p className="text-slate-500 mt-2 text-sm">
+          Guide d'utilisation et cadre de sécurité de l'infrastructure Passerelle OS.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <section className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6">
-          <h3 className="font-bold text-emerald-900 flex items-center gap-2 mb-4">
-            <CheckCircle className="text-emerald-500" size={20} />
-            Ce que Passerelle AI fait
-          </h3>
-          <ul className="space-y-3 text-sm text-emerald-800">
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              Lit le texte des documents numérisés (OCR local).
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              Extrait les dates, types de documents et institutions.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              Suggère des synthèses basées strictement sur les mots-clés.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              Maintient une isolation totale des dossiers par association.
-            </li>
-          </ul>
-        </section>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        {/* Navigation Sidebar */}
+        <div className="md:col-span-4 space-y-2">
+          <a href="#guide-benevole" className="block px-4 py-2 bg-white rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
+            Guide Bénévole
+          </a>
+          <a href="#securite" className="block px-4 py-2 bg-white rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
+            Sécurité & RGPD
+          </a>
+          <a href="#limites" className="block px-4 py-2 bg-white rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
+            Limites du système
+          </a>
+          <a href="#demo" className="block px-4 py-2 bg-white rounded-lg border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
+            Mode Démo
+          </a>
+        </div>
 
-        <section className="bg-red-50 border border-red-100 rounded-2xl p-6">
-          <h3 className="font-bold text-red-900 flex items-center gap-2 mb-4">
-            <XCircle className="text-red-500" size={20} />
-            Ce que Passerelle AI ne fait pas
-          </h3>
-          <ul className="space-y-3 text-sm text-red-800">
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              Ne donne <strong>aucun avis juridique</strong>.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              Ne prend aucune décision de recours de manière autonome.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              N'envoie aucune donnée à OpenAI, Google ou autres IA externes.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1">•</span>
-              Ne remplace pas la validation finale du bénévole.
-            </li>
-          </ul>
-        </section>
-      </div>
-
-      <div className="space-y-8">
-        <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-4">
-            <ShieldCheck className="text-blue-600" size={20} />
-            Règles de sécurité & Confidentialité locale
-          </h3>
-          <div className="prose prose-sm prose-slate max-w-none">
-            <p>
-              Passerelle AI est conçu comme un système souverain. <strong>100% des traitements sont effectués localement</strong> sur la machine ou le réseau de l'association.
-            </p>
-            <ul>
-              <li><strong>Consentement :</strong> Aucun document ne peut être analysé sans l'accord explicite de l'usager, consigné dans le système.</li>
-              <li><strong>Isolation :</strong> Les bénévoles n'ont accès qu'aux dossiers de leur propre espace de travail.</li>
-              <li><strong>Offline-First :</strong> Le moteur OCR (Tesseract) et l'extracteur déterministe fonctionnent sans connexion internet externe.</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-4">
-            <Users className="text-blue-600" size={20} />
-            Guide bénévole (Workflow)
-          </h3>
-          <div className="space-y-4">
-             <div className="flex gap-4">
-               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-sm shrink-0">1</div>
-               <div>
-                 <h4 className="font-bold text-slate-800 text-sm">Création et Consentement</h4>
-                 <p className="text-xs text-slate-500 mt-1">Créez le dossier, expliquez le fonctionnement de l'outil et recueillez le consentement.</p>
-               </div>
-             </div>
-             <div className="flex gap-4">
-               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-sm shrink-0">2</div>
-               <div>
-                 <h4 className="font-bold text-slate-800 text-sm">Import et OCR</h4>
-                 <p className="text-xs text-slate-500 mt-1">Importez le scan. Lancez l'OCR local. Un relecteur doit vérifier que le texte extrait est fidèle à l'image.</p>
-               </div>
-             </div>
-             <div className="flex gap-4">
-               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-sm shrink-0">3</div>
-               <div>
-                 <h4 className="font-bold text-slate-800 text-sm">Extraction Structurée</h4>
-                 <p className="text-xs text-slate-500 mt-1">Générez les données structurées. Le relecteur valide les dates et types détectés.</p>
-               </div>
-             </div>
-          </div>
-        </section>
-
-        <section className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-          <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-4">
-            <Info className="text-slate-500" size={20} />
-            Questions fréquentes
-          </h3>
-          <div className="space-y-4 text-sm">
-            <div>
-              <p className="font-bold text-slate-800">L'outil peut-il se tromper sur une date d'OQTF ?</p>
-              <p className="text-slate-600 mt-1">Oui. C'est pourquoi la validation humaine est <strong>obligatoire</strong>. L'outil signale une "urgence potentielle", mais le délai légal exact doit être vérifié par un humain.</p>
+        {/* Content */}
+        <div className="md:col-span-8 space-y-8">
+          
+          <section id="guide-benevole" className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <FileText className="text-blue-500" size={20} /> Guide Bénévole
+            </h2>
+            <div className="space-y-4 text-sm text-slate-600 leading-relaxed">
+              <p>
+                <strong>1. Création de dossier :</strong> Chaque nouvel usager doit avoir un dossier unique. Le recueil de son <strong>consentement éclairé</strong> est une étape préalable stricte et obligatoire.
+              </p>
+              <p>
+                <strong>2. Import de documents :</strong> Importez des scans lisibles (PDF, JPG). L'outil OCR local analysera le contenu sans l'envoyer sur Internet.
+              </p>
+              <p>
+                <strong>3. Validation humaine :</strong> La machine propose, <strong>l'humain dispose</strong>. Vous devez impérativement relire et valider l'extraction automatique avant de finaliser la synthèse d'un dossier.
+              </p>
             </div>
-            <hr className="border-slate-200" />
-            <div>
-              <p className="font-bold text-slate-800">Puis-je utiliser l'outil sur mon téléphone perso ?</p>
-              <p className="text-slate-600 mt-1">La version actuelle est optimisée pour un usage sur le réseau sécurisé de l'association via un navigateur de bureau.</p>
+          </section>
+
+          <section id="securite" className="bg-emerald-50 rounded-2xl border border-emerald-100 p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-emerald-900 mb-6 flex items-center gap-2">
+              <Shield className="text-emerald-500" size={20} /> Sécurité & RGPD
+            </h2>
+            <div className="space-y-4 text-sm text-emerald-800 leading-relaxed">
+              <p>
+                L'infrastructure Passerelle est construite selon le principe du <strong>Local-First</strong>.
+              </p>
+              <ul className="space-y-3 mt-4">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <span><strong>Aucun Cloud :</strong> Les données de vos bénéficiaires ne sont jamais envoyées à des services tiers comme OpenAI ou Google.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <span><strong>Stockage Local :</strong> Base de données et fichiers résident exclusivement sur le disque dur de la machine physique exécutant le logiciel.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <span><strong>Isolation des Espaces :</strong> Les accès sont compartimentés par rôle (Admin, Bénévole, Relecteur).</span>
+                </li>
+              </ul>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <section id="limites" className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <AlertTriangle className="text-amber-500" size={20} /> Limites du système
+            </h2>
+            <div className="space-y-4 text-sm text-slate-600 leading-relaxed">
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="font-bold text-slate-800 mb-1">Outil d'assistance, non de décision</p>
+                <p>Passerelle ne fournit aucun conseil juridique. Les extractions déterministes servent à accélérer la saisie, mais le travailleur social reste le seul décisionnaire.</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="font-bold text-slate-800 mb-1">Performance OCR (Tesseract)</p>
+                <p>L'OCR local peut rencontrer des difficultés sur des documents manuscrits ou des photos floues. Une correction manuelle du texte est parfois requise.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="demo" className="bg-blue-50/50 rounded-2xl border border-blue-100 p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-blue-900 mb-6 flex items-center gap-2">
+              <HardDrive className="text-blue-500" size={20} /> Mode Démo
+            </h2>
+            <div className="space-y-4 text-sm text-blue-800 leading-relaxed">
+              <p>
+                Pour présenter Passerelle à des partenaires sans exposer de vraies données :
+              </p>
+              <code className="block bg-white p-3 rounded-lg border border-blue-200 font-mono text-xs shadow-sm">
+                # Dans votre terminal<br/>
+                ./scripts/demo_reset.sh
+              </code>
+              <p className="text-xs">
+                Cette commande réinitialise la base et injecte un dossier factice de démonstration ("Jean Dupont"), sans aucun risque pour le secret professionnel.
+              </p>
+            </div>
+          </section>
+
+        </div>
       </div>
     </div>
   );

@@ -1,29 +1,50 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
 
-# Configuration
-DB_NAME="passerelle"
-UPLOAD_DIR="./uploads"
+echo "=================================================="
+echo "        Passerelle OS Local DB Reset 🗄️           "
+echo "=================================================="
 
-echo "🗑️  Resetting Passerelle AI Demo..."
-
-# 1. Clean uploads
-echo "📁 Cleaning uploads directory..."
-rm -rf $UPLOAD_DIR/*
-mkdir -p $UPLOAD_DIR/demo
-touch $UPLOAD_DIR/demo/.gitkeep
-
-# 2. Reset Database
-echo "🗄️  Resetting Database ($DB_NAME)..."
-dropdb $DB_NAME --if-exists
-createdb $DB_NAME
-
-# 3. Initialize Schema & Seed
-echo "🌱 Initializing schema and seeding data..."
-export PYTHONPATH=$PYTHONPATH:.
-python scripts/seed_demo.py
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
 
 echo ""
-echo "✨ Demo environment ready!"
-echo "🚀 Backend: http://localhost:8000"
-echo "🖥️  Frontend: http://localhost:3000"
+echo "[1/5] Nettoyage des fichiers temporaires..."
+rm -rf uploads/*
+mkdir -p uploads
+echo "✓ Dossier d'uploads nettoyé."
+
 echo ""
+echo "[2/5] Libération du port 8000..."
+PIDS="$(lsof -t -i:8000 2>/dev/null || true)"
+if [ -n "$PIDS" ]; then
+  echo "$PIDS" | xargs kill -9 2>/dev/null || true
+  echo "✓ Process backend arrêté."
+else
+  echo "✓ Aucun process sur le port 8000."
+fi
+
+echo ""
+echo "[3/5] Réinitialisation PostgreSQL..."
+psql postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='passerelle' AND pid <> pg_backend_pid();" >/dev/null 2>&1 || true
+dropdb passerelle 2>/dev/null || true
+createdb passerelle
+echo "✓ Base passerelle recréée."
+
+echo ""
+echo "[4/5] Seed demo..."
+PYTHONPATH=. ./backend/.venv/bin/python scripts/seed_demo.py
+echo "✓ Données de démo créées."
+
+echo ""
+echo "[5/5] Vérification utilisateur demo..."
+psql postgresql://passerelle:passerelle@localhost:5432/passerelle -c "SELECT email, role, is_active FROM profile;"
+
+echo ""
+echo "=================================================="
+echo "✅ Reset terminé."
+echo "Frontend: http://localhost:3000 ou 3001"
+echo "Backend:  http://127.0.0.1:8000"
+echo "Login demo: demo@passerelle.ai / demo123"
+echo "Créer admin: PYTHONPATH=. ./backend/.venv/bin/python scripts/create_admin.py"
+echo "=================================================="

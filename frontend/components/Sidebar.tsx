@@ -32,13 +32,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router   = useRouter();
   const [profile, setProfile] = useState<any>(null);
+  const [workspace, setWorkspace] = useState<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
+    
     fetch(`${API_BASE_URL}/auth/me`, { headers: getAuthHeaders() })
       .then(r => r.ok ? r.json() : null)
       .then(d => d && setProfile(d))
+      .catch(() => {});
+
+    fetch(`${API_BASE_URL}/workspace/me`, { headers: getAuthHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d && setWorkspace(d))
       .catch(() => {});
   }, []);
 
@@ -46,6 +53,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     localStorage.removeItem("token");
     router.push("/login");
   };
+
+  const role = profile?.role || "";
+
+  const filteredNav = NAV.filter((item) => {
+    if (item.href === "/") return true;
+    if (item.href === "/knowledge") return true;
+    if (item.href === "/cases") {
+      return role === "admin" || role === "volunteer";
+    }
+    if (item.href === "/review") {
+      return role === "admin" || role === "reviewer";
+    }
+    return false;
+  });
 
   return (
     <aside
@@ -76,13 +97,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {!collapsed && profile && (
         <div className="mx-3 mt-4 mb-2 p-3 bg-slate-50 border border-slate-100 rounded-xl overflow-hidden">
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Espace de travail</p>
-          <p className="text-xs font-semibold text-slate-800 truncate">ONG France Solidarité</p>
+          <p className="text-xs font-semibold text-slate-800 truncate">{workspace?.name || "Espace local"}</p>
         </div>
       )}
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2">
-        {NAV.map((item) => {
+        {filteredNav.map((item) => {
           const active = pathname === item.href;
           return (
             <Link

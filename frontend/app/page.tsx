@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [workspace, setWorkspace] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
 
@@ -29,6 +30,10 @@ export default function Dashboard() {
       const profileRes = await fetch(`${API_BASE_URL}/auth/me`, { headers: getAuthHeaders() });
       const profile = await handleApiResponse(profileRes);
       setUserProfile(profile);
+
+      const wsRes = await fetch(`${API_BASE_URL}/workspace/me`, { headers: getAuthHeaders() });
+      const ws = await handleApiResponse(wsRes);
+      setWorkspace(ws);
 
       const res = await fetch(`${API_BASE_URL}/cases/`, { headers: getAuthHeaders() });
       const data = await handleApiResponse(res);
@@ -169,19 +174,56 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="p-16 text-center">
-                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                  <Users size={28} className="text-slate-200" />
+              <div className="p-10 border border-dashed border-blue-200 rounded-3xl bg-blue-50/10 text-center max-w-xl mx-auto my-6">
+                <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm">
+                  <Shield size={24} />
                 </div>
-                <p className="font-bold text-slate-700 mb-1">Aucun dossier trouvé</p>
-                <p className="text-xs text-slate-400 mb-6">
-                  {search ? `Aucun résultat pour "${search}"` : "Créez le premier dossier de l'association."}
+                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                  Bienvenue dans votre espace {workspace?.name || "Passerelle AI"} !
+                </h3>
+                <p className="text-slate-500 text-xs leading-relaxed mb-6">
+                  Votre espace de travail Passerelle OS est opérationnel. Toutes vos données sont traitées dans un environnement <strong>100% sécurisé et local</strong>. Aucune donnée ne quitte votre réseau.
                 </p>
-                {canCreate && !search && (
-                  <Link href="/cases/new" className="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-all">
-                    <Plus size={13} /> Créer un dossier
-                  </Link>
-                )}
+                
+                <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-6 text-left space-y-3 shadow-sm">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest border-b pb-1">Configuration de l'espace</p>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Rôle d'accès :</span>
+                    <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded capitalize">{role || "Observateur"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Infrastructure locale :</span>
+                    <span className="font-bold text-emerald-600 flex items-center gap-1">
+                      <CheckCircle2 size={12} /> Prêt (Hors-ligne)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Action recommandée :</p>
+                  {canCreate ? (
+                    <div className="flex flex-col sm:flex-row justify-center gap-3">
+                      <Link
+                        href="/cases/new"
+                        className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-blue-700 active:scale-95 shadow-sm shadow-blue-200 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Plus size={14} /> Créer un premier dossier
+                      </Link>
+                      {role === "admin" && (
+                        <Link
+                          href="/settings"
+                          className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                          Ajouter un bénévole
+                        </Link>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      En attente de la création du premier dossier par un administrateur.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>

@@ -1,7 +1,7 @@
 import uuid
 import json
 from datetime import datetime
-from sqlmodel import Session, create_all, SQLModel
+from sqlmodel import Session, SQLModel
 from backend.database import engine, init_db
 from backend.models.models import Workspace, Case, Consent, Document, ExtractionResult, Task, Profile, OCRResult
 

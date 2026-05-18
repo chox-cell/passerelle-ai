@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck, Mail, Lock, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Mail, Lock, AlertTriangle, CheckCircle2, WifiOff, Terminal } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 
 export default function LoginPage() {
@@ -11,7 +11,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/system/health`)
+      .then(res => setBackendOnline(res.ok))
+      .catch(() => setBackendOnline(false));
+
+    if (typeof window !== "undefined" && window.location.search.includes("expired=true")) {
+      setError("Session expirée. Veuillez vous reconnecter.");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +43,13 @@ export default function LoginPage() {
         router.push("/");
       } else {
         const data = await res.json();
-        setError(data.detail || "Erreur de connexion");
+        let errMsg = "Erreur de connexion";
+        if (typeof data.detail === "string") {
+          errMsg = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errMsg = data.detail.map((e: any) => e.msg).join(", ");
+        }
+        setError(errMsg);
       }
     } catch (err) {
       setError("Erreur réseau. Vérifiez que le backend est lancé.");
@@ -106,9 +123,44 @@ export default function LoginPage() {
           </Link>
         </p>
 
-        <div className="mt-10 p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-3">
+        <div className="mt-8 p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-3">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b pb-1">Assistance Démo & Admin</p>
+          
+          <div className="flex justify-between items-center text-[11px]">
+            <span className="text-slate-500">Statut API Backend :</span>
+            {backendOnline === null ? (
+              <span className="text-slate-400 animate-pulse font-medium">Vérification...</span>
+            ) : backendOnline ? (
+              <span className="text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded font-bold uppercase text-[9px] flex items-center gap-1">
+                <CheckCircle2 size={10} /> En ligne
+              </span>
+            ) : (
+              <span className="text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded font-bold uppercase text-[9px] flex items-center gap-1">
+                <WifiOff size={10} /> Hors-ligne
+              </span>
+            )}
+          </div>
+
+          <div className="text-[11px] text-slate-600 leading-relaxed bg-white p-2.5 rounded-xl border border-slate-100/60">
+            <span className="font-bold text-slate-800">🔑 Identifiants de Démo :</span>
+            <div className="mt-1 font-mono text-[10px] text-slate-500 bg-slate-50 p-1.5 rounded flex flex-col gap-0.5">
+              <div>Email : demo@passerelle.ai</div>
+              <div>Pass  : demo123 (Rôle: Bénévole)</div>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-slate-600 leading-relaxed flex gap-2 items-start">
+            <Terminal size={14} className="text-blue-600 mt-0.5 shrink-0" />
+            <p className="text-left">
+              Pour créer un compte <strong>Admin (Fondateur)</strong>, lancez :<br/>
+              <code className="text-[10px] font-mono bg-blue-50 text-blue-700 px-1 py-0.5 rounded mt-1 block w-fit">python scripts/create_admin.py</code>
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-3">
           <AlertTriangle className="text-amber-600 shrink-0" size={18} />
-          <p className="text-[11px] text-amber-800 leading-tight">
+          <p className="text-[11px] text-amber-800 leading-tight text-left">
             <strong>Mode développement local</strong> — Ne pas utiliser avec des données réelles d'usagers tant que le chiffrement complet n'est pas activé.
           </p>
         </div>

@@ -1,35 +1,39 @@
-import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Any
-from jose import jwt, JWTError
-from passlib.context import CryptContext
+from datetime import datetime, timedelta
+from typing import Optional
 
-# Configuration (to be moved to .env in production)
-SECRET_KEY = os.getenv("SECRET_KEY", "LOCAL_DEV_SECRET_KEY_DO_NOT_USE_IN_PROD")
+import bcrypt
+from jose import JWTError, jwt
+
+SECRET_KEY = "change_me_local_dev_only"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours for local dev
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    password_bytes = password[:72].encode("utf-8")
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def decode_access_token(token: str) -> Optional[dict[str, Any]]:
+def verify_password(password: str, password_hash: str) -> bool:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        return bcrypt.checkpw(password[:72].encode("utf-8"), password_hash.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def create_access_token(user_id: str, workspace_id: str, role: str, expires_delta: Optional[timedelta] = None) -> str:
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    payload = {
+        "sub": str(user_id),
+        "workspace_id": str(workspace_id),
+        "role": role,
+        "exp": expire,
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_access_token(token: str) -> dict:
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        return None
+        return {}

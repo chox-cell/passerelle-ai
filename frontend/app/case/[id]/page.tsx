@@ -161,6 +161,8 @@ export default function CaseDetail() {
   const canModify = role === "admin" || role === "volunteer";
   const canReview = role === "admin" || role === "reviewer";
   const hasConsent = consents.some(c => c.consent_type === "ai_extraction" && c.granted);
+  
+  const parsedExt = activeDoc && extractions[activeDoc.id] ? parseExtractionRaw(extractions[activeDoc.id].raw_json) : null;
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
@@ -244,6 +246,13 @@ export default function CaseDetail() {
                 label="Revue finale" 
                 status={caseData?.status === 'approved' ? "completed" : "pending"} 
                 current={Object.keys(extractions).length > 0 && caseData?.status !== 'approved'} 
+              />
+              <TimelineItem 
+                active={reports.length > 0} 
+                icon={FileCheck} 
+                label="Rapport PDF" 
+                status={reports.length > 0 ? "completed" : "pending"} 
+                current={caseData?.status === 'approved' && reports.length === 0} 
                 isLast
               />
             </div>
@@ -478,18 +487,18 @@ export default function CaseDetail() {
                                      <div className="grid grid-cols-2 gap-4">
                                         <div>
                                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Type de Document</p>
-                                          <p className="text-sm font-bold text-slate-900">{parseExtractionRaw(extractions[activeDoc.id].raw_json).document_type || "Non détecté"}</p>
+                                          <p className="text-sm font-bold text-slate-900">{parsedExt?.document_type || "Données non disponibles"}</p>
                                         </div>
                                         <div>
                                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Institution</p>
-                                          <p className="text-sm font-bold text-slate-900">{parseExtractionRaw(extractions[activeDoc.id].raw_json).institution || "Non détectée"}</p>
+                                          <p className="text-sm font-bold text-slate-900">{parsedExt?.institution || "Données non disponibles"}</p>
                                         </div>
                                      </div>
                                      <div className="pt-2 border-t border-indigo-100/30">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Dates détectées</p>
                                         <div className="flex flex-wrap gap-2">
-                                          {parseExtractionRaw(extractions[activeDoc.id].raw_json).important_dates?.length > 0 ? (
-                                            parseExtractionRaw(extractions[activeDoc.id].raw_json).important_dates.map((d: string) => (
+                                          {(parsedExt?.important_dates || []).length > 0 ? (
+                                            parsedExt.important_dates.map((d: string) => (
                                               <span key={d} className="px-2 py-1 bg-white border border-indigo-100 rounded-lg text-xs font-mono font-bold text-indigo-700 shadow-sm">{d}</span>
                                             ))
                                           ) : (
@@ -529,8 +538,8 @@ export default function CaseDetail() {
                        <div className="p-4 bg-amber-50 border-t border-amber-100 flex items-start gap-3">
                           <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
                           <p className="text-[10px] text-amber-800 font-semibold leading-relaxed uppercase tracking-wide">
-                             {extractions[activeDoc.id] && parseExtractionRaw(extractions[activeDoc.id].raw_json).disclaimer 
-                               ? parseExtractionRaw(extractions[activeDoc.id].raw_json).disclaimer 
+                             {parsedExt?.disclaimer 
+                               ? parsedExt.disclaimer 
                                : "Rappel : Les informations extraites doivent toujours être vérifiées par un professionnel. Cet outil local ne remplace pas un conseil juridique."}
                           </p>
                        </div>

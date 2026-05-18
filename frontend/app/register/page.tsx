@@ -34,7 +34,13 @@ export default function RegisterPage() {
         router.push("/");
       } else {
         const data = await res.json();
-        setError(data.detail || "Erreur d'inscription");
+        let errMsg = "Erreur d'inscription";
+        if (typeof data.detail === "string") {
+          errMsg = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errMsg = data.detail.map((e: any) => e.msg).join(", ");
+        }
+        setError(errMsg);
       }
     } catch (err) {
       setError("Erreur réseau. Vérifiez que le backend est lancé.");

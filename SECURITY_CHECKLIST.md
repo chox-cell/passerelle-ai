@@ -26,10 +26,15 @@
 ## Conformité RGPD
 - [x] Modèle de consentement explicite implémenté.
 - [x] Blocage des fonctionnalités AI sans consentement.
-- [x] Audit log des actions sensibles (accès, téléchargement, suppression).
+- [x] Audit log des actions sensibles (accès, téléchargement, suppression, connexion réussie/échouée).
 - [x] Suppression physique des fichiers lors de la suppression d'un dossier.
 
-## Points de Vigilance (V1.3+)
+## Durcissement Session & Sécurité (V1.4)
+- [x] Contrôle d'expiration des jetons JWT sur le backend.
+- [x] Blocage immédiat des comptes utilisateurs inactifs (`is_active: false`).
+- [x] Audit log des tentatives de connexion réussies et échouées.
+- [x] Protection complète des routes par rôle (RBAC) activée et testée.
+
+## Points de Vigilance (V1.4+)
 - [ ] Le chiffrement des fichiers au repos (At-Rest) n'est pas géré par l'application (doit être géré au niveau OS/FDE).
 - [ ] TLS/SSL doit être configuré lors du déploiement (même en local).
-- [ ] Protection des routes par rôle (RBAC) non encore activée (Phase 2).

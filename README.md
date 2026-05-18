@@ -3,7 +3,7 @@
 Infrastructure opérationnelle pour les ONG aidant les migrants en France. 
 **Local-first, Privacy-first, French-first.**
 
-![Status](https://img.shields.io/badge/Status-V1.4--OCR--Local-blue?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-V1.4--Pilot--Hardened-emerald?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Proprietary-blue?style=for-the-badge)
 
 ## 🎯 Qui est ce pour ?
@@ -52,25 +52,24 @@ Passerelle AI gère désormais les comptes utilisateurs par association.
 5. **Revue** : Validation humaine des données extraites.
 6. **Rapport** : Génération de la synthèse PDF.
 
-## 🚀 Lancement Rapide (Demo)
+## 🚀 Démarrage local en 3 commandes
 
-### Initialisation
-Assurez-vous que PostgreSQL est lancé, puis :
-```bash
-chmod +x scripts/demo_reset.sh
-./scripts/demo_reset.sh
-```
+Pour les fondateurs et administrateurs, lancez toute la plateforme en local en 3 étapes ultra-simples :
 
-### Démarrage
-**Backend:**
-```bash
-cd backend && python main.py
-```
+1. **Réinitialiser l'environnement et la base de données :**
+   ```bash
+   ./scripts/demo_reset.sh
+   ```
+2. **Lancer le diagnostic de santé système (Optionnel) :**
+   ```bash
+   ./scripts/doctor.sh
+   ```
+3. **Lancer toute la plateforme d'un coup (Frontend + Backend) :**
+   ```bash
+   ./scripts/start_local.sh
+   ```
 
-**Frontend:**
-```bash
-cd frontend && npm run dev
-```
+*Consultez notre [Guide d'utilisation Fondateur](./docs/founder-local-runbook.md) complet pour apprendre à tester l'OCR locale, l'extraction structurée déterministe et la gestion des comptes admin.*
 
 ## 📚 Documentation
 - [Matrice des Rôles V1.3](./docs/v1-3-auth-plan.md)

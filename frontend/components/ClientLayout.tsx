@@ -1,10 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { usePathname, useRouter } from "next/navigation";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+  const isPublicPage = isAuthPage || pathname === "/knowledge";
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
+      if (!token && !isPublicPage) {
+        router.push("/login");
+      }
+    }
+  }, [pathname, isPublicPage, router]);
+
+  if (isAuthPage) {
+    return <div className="min-h-screen bg-[#F7F9FC]">{children}</div>;
+  }
 
   // Sidebar width as a number for the main content margin
   const sidebarWidth = collapsed ? 64 : 256; // px

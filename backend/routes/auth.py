@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typing import Optional
 import uuid
 from backend.database import get_session
-from backend.models.models import Profile, Workspace
+from backend.models.models import Profile, Workspace, AuditLog
 from backend.services.auth_utils import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -42,11 +42,14 @@ async def register(user_data: UserRegister, session: Session = Depends(get_sessi
         session.refresh(workspace)
 
     # 3. Create Profile
+    existing_profiles = session.exec(select(Profile).where(Profile.workspace_id == workspace.id)).first()
+    assigned_role = "admin" if not existing_profiles else "volunteer"
+
     new_profile = Profile(
         email=user_data.email,
         password_hash=hash_password(user_data.password),
         full_name=user_data.full_name,
-        role="volunteer",
+        role=assigned_role,
         workspace_id=workspace.id
     )
     session.add(new_profile)
@@ -59,7 +62,7 @@ async def register(user_data: UserRegister, session: Session = Depends(get_sessi
         "workspace_id": str(workspace.id),
         "role": new_profile.role
     }
-    access_token = create_access_token(data=token_data)
+    access_token = create_access_token(user.id, user.workspace_id, user.role)
 
     return {
         "access_token": access_token,
@@ -73,14 +76,45 @@ async def register(user_data: UserRegister, session: Session = Depends(get_sessi
 async def login(user_data: UserLogin, session: Session = Depends(get_session)):
     user = session.exec(select(Profile).where(Profile.email == user_data.email)).first()
     if not user or not verify_password(user_data.password, user.password_hash):
+        # Audit failed login attempt
+        failed_audit = AuditLog(
+            action="LOGIN_FAILED",
+            resource_type="auth",
+            details=f"Email: {user_data.email}"
+        )
+        session.add(failed_audit)
+        session.commit()
         throw_auth_error("Email ou mot de passe incorrect.")
+
+    if not user.is_active:
+        # Audit inactive login attempt
+        failed_audit = AuditLog(
+            workspace_id=user.workspace_id,
+            user_id=user.id,
+            action="LOGIN_FAILED_INACTIVE",
+            resource_type="auth",
+            details=f"Email: {user_data.email}"
+        )
+        session.add(failed_audit)
+        session.commit()
+        throw_auth_error("Utilisateur inactif. Veuillez contacter votre administrateur.")
 
     token_data = {
         "sub": str(user.id),
         "workspace_id": str(user.workspace_id),
         "role": user.role
     }
-    access_token = create_access_token(data=token_data)
+    access_token = create_access_token(user.id, user.workspace_id, user.role)
+
+    # Audit successful login
+    success_audit = AuditLog(
+        workspace_id=user.workspace_id,
+        user_id=user.id,
+        action="LOGIN_SUCCESS",
+        resource_type="auth"
+    )
+    session.add(success_audit)
+    session.commit()
 
     return {
         "access_token": access_token,
@@ -114,6 +148,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
     user = session.get(Profile, user_id)
     if not user:
         throw_auth_error("Utilisateur non trouvé.")
+    
+    if not user.is_active:
+        throw_auth_error("Utilisateur inactif. Veuillez contacter votre administrateur.")
+        
     return user
 
 class RoleChecker:

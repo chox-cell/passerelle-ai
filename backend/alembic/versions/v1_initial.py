@@ -36,7 +36,9 @@ def upgrade() -> None:
         sa.Column('workspace_id', sqlmodel.sql.sqltypes.GUID(), nullable=True),
         sa.Column('full_name', sa.String(), nullable=False),
         sa.Column('email', sa.String(), nullable=False),
+        sa.Column('password_hash', sa.String(), nullable=False),
         sa.Column('role', sa.String(), nullable=False),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(['workspace_id'], ['workspace.id'], ),
         sa.PrimaryKeyConstraint('id')
@@ -138,8 +140,39 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id')
     )
 
+    # OCR Results
+    op.create_table(
+        'ocrresult',
+        sa.Column('id', sqlmodel.sql.sqltypes.GUID(), nullable=False),
+        sa.Column('document_id', sqlmodel.sql.sqltypes.GUID(), nullable=False),
+        sa.Column('extracted_text', sa.String(), nullable=False),
+        sa.Column('corrected_text', sa.String(), nullable=True),
+        sa.Column('engine', sa.String(), nullable=False),
+        sa.Column('pages_processed', sa.Integer(), nullable=False),
+        sa.Column('status', sa.String(), nullable=False),
+        sa.Column('is_reviewed', sa.Boolean(), nullable=False),
+        sa.Column('reviewed_by', sqlmodel.sql.sqltypes.GUID(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.ForeignKeyConstraint(['document_id'], ['document.id'], ),
+        sa.PrimaryKeyConstraint('id')
+    )
+
+    # Reports
+    op.create_table(
+        'report',
+        sa.Column('id', sqlmodel.sql.sqltypes.GUID(), nullable=False),
+        sa.Column('case_id', sqlmodel.sql.sqltypes.GUID(), nullable=False),
+        sa.Column('report_type', sa.String(), nullable=False),
+        sa.Column('file_path', sa.String(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.ForeignKeyConstraint(['case_id'], ['case.id'], ),
+        sa.PrimaryKeyConstraint('id')
+    )
+
 
 def downgrade() -> None:
+    op.drop_table('report')
+    op.drop_table('ocrresult')
     op.drop_table('consent')
     op.drop_table('auditlog')
     op.drop_table('task')
