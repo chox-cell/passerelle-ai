@@ -76,5 +76,14 @@ Pour les fondateurs et administrateurs, lancez toute la plateforme en local en 3
 - [Plan de Test Pilote](./docs/pilot-plan-fr.md)
 - [Politique RGPD](./docs/gdpr.md)
 
+### 🎤 Présentation aux associations (Pilote)
+- [One-Pager (Résumé)](./docs/presentation/onepager-fr.md)
+- [Diaporama de Présentation](./docs/presentation/slide-outline-fr.md)
+- [Script de Démo (20 min)](./docs/presentation/demo-script-fr.md)
+- [Checklist Avant Démo](./DEMO_FLOW_CHECKLIST_FR.md)
+- [Modèles d'Emails de Prospection](./docs/presentation/email-outreach-fr.md)
+- [Conditions de l'Offre Pilote](./docs/presentation/pilot-offer-fr.md)
+- [Plan des Captures d'Écran](./docs/presentation/visual-assets-plan.md)
+
 ---
 *Information à vérifier avec un professionnel qualifié. Zéro donnée cloud en V1.*
